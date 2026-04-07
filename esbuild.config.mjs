@@ -2,6 +2,7 @@ import esbuild from 'esbuild';
 import sveltePlugin from 'esbuild-svelte';
 import { sveltePreprocess } from 'svelte-preprocess';
 import path from 'path';
+import { copyFileSync } from 'fs';
 
 const prod = process.argv[2] === 'production';
 
@@ -13,6 +14,31 @@ const banner = `/*
 
 /** Obsidian loads main.js, manifest.json, and styles.css from the plugin folder root (same as obsidian-sample-plugin). */
 const PLUGIN_ROOT = path.resolve('.');
+
+// Ship the onnxruntime-web WASM binary as a sibling file. The main thread
+// reads it at load time and transfers it to the embedding Web Worker on init,
+// so the wasm never lives as a JS literal inside main.js or worker.js.
+copyFileSync(
+  path.resolve('./node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm'),
+  path.join(PLUGIN_ROOT, 'ort-wasm-simd-threaded.wasm'),
+);
+
+/**
+ * Electron exposes `process` inside dedicated workers with `release.name === "node"`.
+ * @huggingface/transformers' web build then picks the inlined empty onnxruntime-node
+ * stub, so `InferenceSession` is undefined and model load throws (reading 'create').
+ * Patch `release.name` before transformers' env.js runs (banner is first in the bundle).
+ */
+const WORKER_NODE_PROCESS_PATCH = `(function(){
+  try {
+    var s = typeof self !== "undefined" ? self : null;
+    var inWorker = s && ["DedicatedWorkerGlobalScope","ServiceWorkerGlobalScope","SharedWorkerGlobalScope"].includes(s.constructor && s.constructor.name);
+    var p = typeof process !== "undefined" ? process : null;
+    if (inWorker && p && p.release && p.release.name === "node") {
+      Object.defineProperty(p.release, "name", { value: "electron-worker", configurable: true, enumerable: true });
+    }
+  } catch (_e) {}
+})();`;
 
 /**
  * Stubs native addons that transformers.node.min.cjs requires at module-init time
@@ -36,25 +62,68 @@ const nativeStubPlugin = {
   },
 };
 
+const transformersAliases = {
+  // Use the Node CJS build of transformers so it runs in Electron's renderer which
+  // has IS_NODE_ENV=true.  The web build's IS_NODE_ENV branch falls back to its
+  // empty onnxruntime-node stub; the node build does require("onnxruntime-node")
+  // which we redirect below to the pure-WASM ort bundle.
+  '@huggingface/transformers':
+    './node_modules/@huggingface/transformers/dist/transformers.node.min.cjs',
+  // Redirect the native addon to the pure-WASM ort build so Obsidian can run it.
+  'onnxruntime-node':
+    './node_modules/onnxruntime-web/dist/ort.wasm.bundle.min.mjs',
+  // Keep webgpu alias so any internal transformers webgpu path doesn't break.
+  'onnxruntime-web/webgpu':
+    './node_modules/onnxruntime-web/dist/ort.webgpu.bundle.min.mjs',
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 1: bundle the Web Worker that owns all ONNX/transformers inference.
+// The output is captured as a string, inlined into main.js via a virtual
+// module, and instantiated at runtime via Blob URL — so the plugin still
+// ships as a single main.js file.
+// ─────────────────────────────────────────────────────────────────────────────
+await esbuild.build({
+  entryPoints: ['src/workers/embeddingWorker.ts'],
+  bundle: true,
+  format: 'iife',
+  platform: 'browser',
+  target: 'es2020',
+  banner: { js: WORKER_NODE_PROCESS_PATCH },
+  logLevel: 'info',
+  // Keep the worker unminified so we can read stack traces when things go
+  // wrong inside transformers/ort. Worker is loaded lazily and not part of
+  // the startup critical path, so size matters less here.
+  minify: false,
+  sourcemap: false,
+  loader: { '.wasm': 'binary' },
+  alias: {
+    // Do NOT inherit onnxruntime-node aliases from the main config.
+    // Force the worker's webgpu import path to the wasm-only bundle to avoid
+    // runtime mismatches between wasm binaries and wasm factories in Electron workers.
+    // Use unminified transformers.web.js while debugging so stack traces have
+    // real function names. Switch back to transformers.web.min.js for release.
+    '@huggingface/transformers':
+      './node_modules/@huggingface/transformers/dist/transformers.web.js',
+    'onnxruntime-web/webgpu':
+      './node_modules/onnxruntime-web/dist/ort.wasm.bundle.min.mjs',
+  },
+  plugins: [nativeStubPlugin],
+  outfile: path.join(PLUGIN_ROOT, 'worker.js'),
+  define: {
+    'process.env.NODE_ENV': JSON.stringify(prod ? 'production' : 'development'),
+  },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 2: main plugin bundle.
+// ─────────────────────────────────────────────────────────────────────────────
 const context = await esbuild.context({
   banner: { js: banner },
   entryPoints: ['src/main.ts'],
   bundle: true,
   loader: { '.wasm': 'binary' },
-  alias: {
-    // Use the Node CJS build of transformers so it runs in Electron's renderer which
-    // has IS_NODE_ENV=true.  The web build's IS_NODE_ENV branch falls back to its
-    // empty onnxruntime-node stub; the node build does require("onnxruntime-node")
-    // which we redirect below to the pure-WASM ort bundle.
-    '@huggingface/transformers':
-      './node_modules/@huggingface/transformers/dist/transformers.node.min.cjs',
-    // Redirect the native addon to the pure-WASM ort build so Obsidian can run it.
-    'onnxruntime-node':
-      './node_modules/onnxruntime-web/dist/ort.wasm.bundle.min.mjs',
-    // Keep webgpu alias so any internal transformers webgpu path doesn't break.
-    'onnxruntime-web/webgpu':
-      './node_modules/onnxruntime-web/dist/ort.webgpu.bundle.min.mjs',
-  },
+  alias: transformersAliases,
   external: [
     'obsidian',
     'electron',
@@ -87,3 +156,4 @@ if (prod) {
 }
 
 await context.watch();
+

@@ -47,14 +47,17 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Verify build artifact
+      - name: Verify build artifacts
         shell: bash
         run: |
-          test -f main.js || (echo "main.js missing" && exit 1)
-          size=$(wc -c < main.js)
-          echo "main.js size: $size bytes"
-          # Sanity bound: warn if absurdly small or huge
-          if [ "$size" -lt 10000 ]; then
+          for f in main.js worker.js ort-wasm-simd-threaded.wasm; do
+            test -f "$f" || (echo "$f missing" && exit 1)
+            size=$(wc -c < "$f")
+            echo "$f size: $size bytes"
+          done
+          # Sanity bound on main.js — must contain the plugin code, not be near-empty
+          main_size=$(wc -c < main.js)
+          if [ "$main_size" -lt 10000 ]; then
             echo "main.js suspiciously small"
             exit 1
           fi

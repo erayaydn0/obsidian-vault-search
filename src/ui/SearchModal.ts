@@ -161,19 +161,30 @@ export class SearchModal extends Modal {
     if (!this.resultsEl || !this.inputEl) return;
 
     this.resultsEl.empty();
-    const trimmedQuery = this.query.trim();
+    this.resultsEl.removeClass('vault-search-results-loading');
+
+    const trimmedQuery = (this.inputEl.value ?? '').trim();
+    const displayQuery = this.inputEl.value ?? this.query;
     const showList = results.length > 0;
     this.inputEl.setAttribute('aria-expanded', showList ? 'true' : 'false');
     this.inputEl.removeAttribute('aria-activedescendant');
 
     if (this.isLoading && trimmedQuery.length >= SEARCH_DEFAULTS.MIN_QUERY_LENGTH) {
+      if (results.length > 0) {
+        this.resultsEl.addClass('vault-search-results-loading');
+        this.resultsEl.createDiv({ cls: 'vault-search-loading-banner', text: 'Searching...' });
+        this.renderResultItems(results);
+        this.setStatus('Searching...');
+        this.updateSelection();
+        return;
+      }
       this.resultsEl.createEl('p', { text: 'Searching...', cls: 'vault-search-hint vault-search-hint-loading' });
       this.setStatus('Searching...');
       return;
     }
 
     if (trimmedQuery.length > 0 && trimmedQuery.length < SEARCH_DEFAULTS.MIN_QUERY_LENGTH) {
-      this.resultsEl.createEl('p', { text: 'En az 2 karakter girin.', cls: 'vault-search-hint' });
+      this.resultsEl.createEl('p', { text: 'Enter at least 2 characters to search.', cls: 'vault-search-hint' });
       this.setStatus('Enter at least 2 characters to search.');
       return;
     }
@@ -182,12 +193,12 @@ export class SearchModal extends Modal {
       this.resultsEl.createEl('p', {
         text:
           trimmedQuery.length >= SEARCH_DEFAULTS.MIN_QUERY_LENGTH
-            ? `No results found for "${this.query}".`
+            ? `No results found for "${displayQuery}".`
             : 'Start typing to search.',
         cls: 'vault-search-hint',
       });
       if (trimmedQuery.length >= SEARCH_DEFAULTS.MIN_QUERY_LENGTH) {
-        this.setStatus(`No results found for "${this.query}".`);
+        this.setStatus(`No results found for "${displayQuery}".`);
       } else {
         this.setStatus('Start typing to search.');
       }
@@ -195,6 +206,13 @@ export class SearchModal extends Modal {
     }
 
     this.setStatus(`${results.length} result(s) found.`);
+    this.renderResultItems(results);
+    this.updateSelection();
+  }
+
+  private renderResultItems(results: SearchResult[]): void {
+    if (!this.resultsEl) return;
+
     for (let index = 0; index < results.length; index++) {
       const result = results[index]!;
       const item = this.resultsEl.createDiv({
@@ -231,7 +249,6 @@ export class SearchModal extends Modal {
 
       item.addEventListener('click', () => void this.openResult(result));
     }
-    this.updateSelection();
   }
 
   private setStatus(message: string): void {

@@ -49,5 +49,7 @@ jobs:
           generate_release_notes: true
           files: |
             main.js
+            worker.js
+            ort-wasm-simd-threaded.wasm
             manifest.json
             styles.css

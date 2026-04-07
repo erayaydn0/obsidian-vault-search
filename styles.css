@@ -3,6 +3,12 @@
 
 /* ─── Search Modal ─────────────────────────────────────────────────────────── */
 
+.modal-container:has(.vault-search-modal) {
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: max(var(--safe-area-inset-top), 6vh);
+}
+
 .vault-search-modal {
   width: min(760px, 92vw);
   max-width: calc(100vw - var(--size-4-4));
@@ -87,6 +93,20 @@
   display: flex;
   flex-direction: column;
   gap: var(--size-2-2);
+}
+
+.vault-search-results.vault-search-results-loading {
+  opacity: 0.92;
+}
+
+.vault-search-loading-banner {
+  flex-shrink: 0;
+  text-align: center;
+  font-size: var(--font-ui-small);
+  color: var(--text-accent);
+  padding: var(--size-2-2) var(--size-4-2);
+  border-bottom: 1px dashed var(--background-modifier-border);
+  background-color: var(--background-secondary);
 }
 
 .vault-search-hint {

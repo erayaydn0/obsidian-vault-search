@@ -1,4 +1,4 @@
-import { FileSystemAdapter, Notice, Plugin } from 'obsidian';
+import { Notice, Plugin } from 'obsidian';
 
 import { PLUGIN_NAME, VIEW_TYPE_SIDEBAR } from './constants';
 import { EmbeddingEngine } from './core/EmbeddingEngine';
@@ -31,16 +31,29 @@ export default class VaultSearchPlugin extends Plugin {
     this.statusItem = this.addStatusBarItem();
     this.setStatus('ready');
 
-    // EmbeddingEngine needs a real OS path because @huggingface/transformers
-    // uses Node's fs module internally for model caching and WASM loading.
-    // getFullPath() is the public FileSystemAdapter API for this.
-    const adapter = this.app.vault.adapter;
-    const pluginDir =
-      adapter instanceof FileSystemAdapter
-        ? adapter.getFullPath(`.obsidian/plugins/${this.manifest.id}`)
-        : '';
+    // Load the bundled Web Worker source + WASM binary so EmbeddingEngine can
+    // run inference off the main thread. If either read fails (unusual), we
+    // fall back to the in-process hash embedder without crashing the plugin.
+    // `manifest.dir` is injected by Obsidian at runtime and points to the real
+    // plugin folder (which may not match manifest.id — e.g. a dev checkout).
+    const pluginAssetDir =
+      (this.manifest as { dir?: string }).dir ?? `.obsidian/plugins/${this.manifest.id}`;
+    let workerSource = '';
+    let wasmBinary: ArrayBuffer | null = null;
+    try {
+      workerSource = await this.app.vault.adapter.read(`${pluginAssetDir}/worker.js`);
+    } catch (err) {
+      console.error('[VaultSearch] Failed to read embedding worker.js:', err);
+    }
+    try {
+      wasmBinary = await this.app.vault.adapter.readBinary(
+        `${pluginAssetDir}/ort-wasm-simd-threaded.wasm`,
+      );
+    } catch (err) {
+      console.error('[VaultSearch] Failed to read ort-wasm-simd-threaded.wasm:', err);
+    }
 
-    this.embedder = new EmbeddingEngine(this.settings, pluginDir);
+    this.embedder = new EmbeddingEngine(this.settings, workerSource, wasmBinary);
 
     this.embedder.setProgressCallback((loaded, total) => {
       const pct = total > 0 ? Math.round((loaded / total) * 100) : 0;

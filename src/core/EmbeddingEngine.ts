@@ -1,23 +1,58 @@
 import { EMBEDDING_DIMENSION } from '../constants';
-import { bundledOrtWasm } from '../ortWasmBundled';
 import type { VaultSearchSettings } from '../types';
 
 type ProgressCallback = (loaded: number, total: number) => void;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type HFPipeline = (text: string, options: Record<string, unknown>) => Promise<{ data: Float32Array }>;
+type WorkerOutgoing =
+  | { type: 'init'; modelName: string; wasmBinary: ArrayBuffer }
+  | { type: 'embed'; id: number; text: string };
+
+type WorkerIncoming =
+  | { type: 'ready' }
+  | { type: 'init-error'; message: string; stack?: string }
+  | { type: 'progress'; loaded: number; total: number }
+  | { type: 'result'; id: number; vector: Float32Array | null; error?: string };
+
+type PendingEmbed = {
+  resolve: (vec: Float32Array) => void;
+  reject: (err: Error) => void;
+};
 
 export class EmbeddingEngine {
   private settings: VaultSearchSettings;
-  private readonly pluginDir: string;
-  private pipeline: HFPipeline | null = null;
+  private worker: Worker | null = null;
+  private workerUrl: string | null = null;
   private initialized = false;
   private initPromise: Promise<void> | null = null;
+  private initResolve: (() => void) | null = null;
+  private initReject: ((err: Error) => void) | null = null;
+  private modelLoadFailed = false;
   private onProgress: ProgressCallback | null = null;
+  private nextEmbedId = 1;
+  private readonly pending = new Map<number, PendingEmbed>();
 
-  constructor(settings: VaultSearchSettings, pluginDir: string) {
+  private readonly workerSource: string;
+  private readonly wasmBinary: ArrayBuffer | null;
+
+  /**
+   * @param settings     Current plugin settings.
+   * @param workerSource The bundled Web Worker source as a string. Pass an empty
+   *                     string (e.g. in unit tests) to disable worker-based
+   *                     inference — EmbeddingEngine will run in fallback mode.
+   *                     main.ts reads `worker.js` from the plugin folder and
+   *                     passes its contents here.
+   * @param wasmBinary   The onnxruntime-web WASM binary, read by main.ts from
+   *                     the sibling file. Transferred (not copied) to the
+   *                     worker on init so it never bloats main.js or worker.js.
+   */
+  constructor(
+    settings: VaultSearchSettings,
+    workerSource = '',
+    wasmBinary: ArrayBuffer | null = null,
+  ) {
     this.settings = settings;
-    this.pluginDir = pluginDir;
+    this.workerSource = workerSource;
+    this.wasmBinary = wasmBinary;
   }
 
   setProgressCallback(cb: ProgressCallback): void {
@@ -25,53 +60,61 @@ export class EmbeddingEngine {
   }
 
   applySettings(settings: VaultSearchSettings): void {
-    const modelChanged =
-      settings.modelName !== this.settings.modelName ||
-      settings.modelCacheDir !== this.settings.modelCacheDir;
+    const modelChanged = settings.modelName !== this.settings.modelName;
     this.settings = settings;
     if (modelChanged) {
-      this.pipeline = null;
-      this.initialized = false;
-      this.initPromise = null;
+      this.dispose();
     }
   }
 
-  /** True after init when the HuggingFace pipeline failed to load (hash fallback only). */
+  /** True after init when the worker failed to load the HuggingFace model (hash fallback only). */
   get isFallback(): boolean {
-    return this.initialized && this.pipeline === null;
+    return this.initialized && this.modelLoadFailed;
   }
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
     if (this.initPromise) return this.initPromise;
-    this.initPromise = this._loadModel();
+    this.initPromise = this._startWorker();
     return this.initPromise;
   }
 
   async embed(text: string): Promise<Float32Array> {
     await this.initialize();
 
-    if (!this.pipeline) {
+    if (this.modelLoadFailed || !this.worker) {
       return this._fallbackEmbed(text);
     }
 
-    try {
-      const output = await this.pipeline(text, { pooling: 'mean', normalize: true });
-      return output.data instanceof Float32Array ? output.data : new Float32Array(output.data);
-    } catch {
-      return this._fallbackEmbed(text);
-    }
+    const id = this.nextEmbedId++;
+    return new Promise<Float32Array>((resolve, reject) => {
+      this.pending.set(id, {
+        resolve: (vec) => resolve(vec),
+        reject: (err) => {
+          console.warn('[EmbeddingEngine] embed failed, using fallback for this call:', err.message);
+          resolve(this._fallbackEmbed(text));
+        },
+      });
+      const msg: WorkerOutgoing = { type: 'embed', id, text };
+      this.worker!.postMessage(msg);
+      // Safety timeout: if the worker never replies, don't hang indexing forever.
+      setTimeout(() => {
+        const entry = this.pending.get(id);
+        if (entry) {
+          this.pending.delete(id);
+          entry.reject(new Error('embed timeout'));
+        }
+      }, 30_000);
+      // Silence unused-var lint for reject — we invoke it via pending map above.
+      void reject;
+    });
   }
 
   async embedBatch(texts: string[]): Promise<Float32Array[]> {
     await this.initialize();
     const results: Float32Array[] = [];
-    for (let i = 0; i < texts.length; i++) {
-      // Yield to the event loop *before* each ONNX call so the renderer can paint
-      // and user input is processed between heavy inferences. Idle callback gives
-      // UI work priority; falls back to a modest timeout in non-browser contexts.
-      await yieldToIdle();
-      results.push(await this.embed(texts[i]!));
+    for (const text of texts) {
+      results.push(await this.embed(text));
     }
     return results;
   }
@@ -86,79 +129,115 @@ export class EmbeddingEngine {
   }
 
   dispose(): void {
-    this.pipeline = null;
+    if (this.worker) {
+      this.worker.terminate();
+      this.worker = null;
+    }
+    if (this.workerUrl) {
+      URL.revokeObjectURL(this.workerUrl);
+      this.workerUrl = null;
+    }
+    for (const entry of this.pending.values()) {
+      entry.reject(new Error('EmbeddingEngine disposed'));
+    }
+    this.pending.clear();
     this.initialized = false;
     this.initPromise = null;
+    this.initResolve = null;
+    this.initReject = null;
+    this.modelLoadFailed = false;
   }
 
   // ---------------------------------------------------------------------------
 
-  private async _loadModel(): Promise<void> {
+  private async _startWorker(): Promise<void> {
+    if (!this.workerSource || !this.wasmBinary) {
+      console.warn('[EmbeddingEngine] Worker source or WASM binary missing, using fallback embedding.');
+      this.modelLoadFailed = true;
+      this.initialized = true;
+      return;
+    }
     try {
-      // onnxruntime-node is aliased in esbuild to ort.wasm.bundle.min.mjs (the pure-WASM
-      // build). Configure its env before requiring transformers so it picks up our settings.
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const ort = require('onnxruntime-node') as {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        env: { wasm: Record<string, any> };
+      const blob = new Blob([this.workerSource], { type: 'application/javascript' });
+      this.workerUrl = URL.createObjectURL(blob);
+      this.worker = new Worker(this.workerUrl);
+      this.worker.onmessage = (e: MessageEvent<WorkerIncoming>) => this._handleWorkerMessage(e.data);
+      this.worker.onerror = (e: ErrorEvent) => {
+        console.error('[EmbeddingEngine] worker error:', e.message);
+        this.modelLoadFailed = true;
+        this.initialized = true;
+        this.initResolve?.();
       };
 
-      // Disable the worker proxy — nested workers crash in Electron's renderer.
-      ort.env.wasm['proxy'] = false;
-      // Force single-threaded execution; SharedArrayBuffer is not available in Obsidian.
-      ort.env.wasm['numThreads'] = 1;
-
-      // Provide the WASM binary directly from the bundled asset so ort never tries to
-      // fetch() it. fetch() / URL loading fails in Obsidian's sandboxed renderer, and
-      // reading from node_modules at runtime doesn't work once the plugin is installed.
-      ort.env.wasm['wasmBinary'] = Uint8Array.from(bundledOrtWasm);
-
-      // Set wasmPaths to a truthy value so transformers' CDN auto-fill is skipped.
-      ort.env.wasm['wasmPaths'] = {};
-
-      // onnxruntime-web registers itself on globalThis[Symbol.for('onnxruntime')].
-      // Transformers' ONNX backend checks for this symbol first and, if found, takes a
-      // shortcut path that never populates its internal supportedDevices list — causing
-      // device:"cpu" to fail with "Should be one of: .".
-      // Deleting the symbol forces the IS_NODE_ENV branch, which correctly registers
-      // 'cpu' (and others) as supported devices while still using the same WASM runtime.
-      delete (globalThis as Record<symbol, unknown>)[Symbol.for('onnxruntime')];
-
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { pipeline, env } = require('@huggingface/transformers') as {
-        pipeline: (
-          task: string,
-          model: string,
-          options: Record<string, unknown>,
-        ) => Promise<HFPipeline>;
-        env: { cacheDir: string };
-      };
-
-      // Store model files in the vault-local cache dir.
-      env.cacheDir = this.settings.modelCacheDir;
-
-      this.pipeline = await pipeline('feature-extraction', this.settings.modelName, {
-        // Force CPU/WASM backend — skips the JSEP/WebGPU path and the larger JSEP WASM.
-        device: 'cpu',
-        progress_callback: (info: { loaded?: number; total?: number }) => {
-          if (typeof info.loaded === 'number' && typeof info.total === 'number') {
-            this.onProgress?.(info.loaded, info.total);
-          }
-        },
+      const readyPromise = new Promise<void>((resolve, reject) => {
+        this.initResolve = resolve;
+        this.initReject = reject;
       });
 
-      this.initialized = true;
-      console.info(
-        `[EmbeddingEngine] Loaded HuggingFace model "${this.settings.modelName}" (cacheDir=${this.settings.modelCacheDir})`,
-      );
+      // Copy the wasm so the transfer doesn't invalidate our reference (we keep
+      // the original around so a re-init after dispose/applySettings still works).
+      const wasmCopy = this.wasmBinary.slice(0);
+      const initMsg: WorkerOutgoing = {
+        type: 'init',
+        modelName: this.settings.modelName,
+        wasmBinary: wasmCopy,
+      };
+      this.worker.postMessage(initMsg, [wasmCopy]);
+
+      await readyPromise;
     } catch (err) {
-      console.error('[EmbeddingEngine] Failed to load HuggingFace model, using fallback embedding:', err);
-      this.initialized = true; // Mark initialized so we don't retry on every embed call
+      console.error('[EmbeddingEngine] Failed to start embedding worker, using fallback:', err);
+      this.modelLoadFailed = true;
+      this.initialized = true;
+    }
+  }
+
+  private _handleWorkerMessage(msg: WorkerIncoming): void {
+    switch (msg.type) {
+      case 'ready': {
+        this.initialized = true;
+        this.modelLoadFailed = false;
+        console.info(
+          `[EmbeddingEngine] Worker loaded HuggingFace model "${this.settings.modelName}"`,
+        );
+        this.initResolve?.();
+        this.initResolve = null;
+        this.initReject = null;
+        return;
+      }
+      case 'init-error': {
+        console.error(
+          '[EmbeddingEngine] Worker failed to load HuggingFace model, using fallback embedding:',
+          msg.message,
+          msg.stack ? `\n${msg.stack}` : '',
+        );
+        this.modelLoadFailed = true;
+        this.initialized = true;
+        this.initResolve?.();
+        this.initResolve = null;
+        this.initReject = null;
+        return;
+      }
+      case 'progress': {
+        this.onProgress?.(msg.loaded, msg.total);
+        return;
+      }
+      case 'result': {
+        const entry = this.pending.get(msg.id);
+        if (!entry) return;
+        this.pending.delete(msg.id);
+        if (msg.vector) {
+          entry.resolve(msg.vector);
+        } else {
+          entry.reject(new Error(msg.error ?? 'worker returned null vector'));
+        }
+        return;
+      }
     }
   }
 
   /**
-   * Character-hash fallback embedding used when the real model is unavailable.
+   * Character-hash fallback embedding used when the worker model is unavailable.
    * Produces normalised Float32Array vectors that are consistent per text but
    * not semantically meaningful.
    */
@@ -169,17 +248,6 @@ export class EmbeddingEngine {
     }
     return normalizeVector(vector);
   }
-}
-
-function yieldToIdle(): Promise<void> {
-  return new Promise((resolve) => {
-    const ric = (globalThis as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => void }).requestIdleCallback;
-    if (typeof ric === 'function') {
-      ric(() => resolve(), { timeout: 50 });
-    } else {
-      setTimeout(resolve, 0);
-    }
-  });
 }
 
 function normalizeVector(vector: Float32Array): Float32Array {

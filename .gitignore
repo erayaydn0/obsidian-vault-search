@@ -7,6 +7,8 @@ yarn.lock
 
 # Bundled plugin (Obsidian convention — ship via GitHub releases, not the repo)
 main.js
+worker.js
+ort-wasm-simd-threaded.wasm
 *.map
 
 dist/
