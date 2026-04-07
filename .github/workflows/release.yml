@@ -1,0 +1,53 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.0"
+
+      - name: Verify tag matches manifest.json version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          MANIFEST_VERSION=$(node -p "require('./manifest.json').version")
+          echo "Tag: $TAG"
+          echo "manifest.json version: $MANIFEST_VERSION"
+          if [ "$TAG" != "$MANIFEST_VERSION" ]; then
+            echo "::error::Tag ($TAG) does not match manifest.json version ($MANIFEST_VERSION)"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Type-check
+        run: bun run check
+
+      - name: Test
+        run: bun run test
+
+      - name: Build
+        run: bun run build
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            main.js
+            manifest.json
+            styles.css

@@ -1,0 +1,27 @@
+name: welcome
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: >
+            Thanks for opening your first issue in VaultSearch! A maintainer will
+            triage it soon. If you are reporting a bug, please make sure you have
+            included your Obsidian version, OS, and steps to reproduce.
+          pr-message: >
+            Thanks for your first pull request to VaultSearch! Please make sure
+            you have read [AGENTS.md](../blob/main/AGENTS.md) and the PR checklist.
+            CI will run automatically — a maintainer will review once it is green.

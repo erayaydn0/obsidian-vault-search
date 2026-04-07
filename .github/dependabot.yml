@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - github-actions
+
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    # Runtime deps may have native bindings or strict ABI requirements
+    # (sql.js, @huggingface/transformers, onnxruntime-*, sharp stub).
+    # See AGENTS.md §8.1. Bump those manually after verification.
+    allow:
+      - dependency-type: development

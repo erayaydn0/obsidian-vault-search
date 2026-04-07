@@ -1,0 +1,14 @@
+# Default owner for everything
+*                       @erayaydn0
+
+# Frozen module — see AGENTS.md §10
+/src/mcp/               @erayaydn0
+
+# Build, CI, and release infrastructure
+/.github/               @erayaydn0
+/esbuild.config.mjs     @erayaydn0
+/Dockerfile.test        @erayaydn0
+/manifest.json          @erayaydn0
+/package.json           @erayaydn0
+/bun.lock               @erayaydn0
+/tsconfig.json          @erayaydn0

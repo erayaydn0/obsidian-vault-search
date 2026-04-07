@@ -1,0 +1,40 @@
+name: Feature request
+description: Suggest a new feature or enhancement
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an early-stage idea? Please open a **Discussion** first instead.
+        Use this form when you have a concrete proposal.
+
+        ⚠️ The MCP server module (`src/mcp/`) is **frozen** — see AGENTS.md §10.
+        Feature requests touching MCP will be closed unless coordinated with the maintainer first.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user problem does this solve? Who is affected?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Compatibility check
+      options:
+        - label: My proposal does not require native modules
+          required: true
+        - label: My proposal does not introduce new external network calls (other than the existing one-time model download)
+          required: true
+        - label: My proposal does not touch `src/mcp/`
+          required: true
