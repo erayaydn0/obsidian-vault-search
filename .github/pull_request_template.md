@@ -1,6 +1,6 @@
 <!--
 Thanks for contributing to VaultSearch!
-Before opening this PR, please read AGENTS.md (especially §11).
+Before opening this PR, please read DEVELOPMENT.md (especially §11).
 -->
 
 ## Summary
@@ -21,7 +21,7 @@ Closes #
 - [ ] No `any`, no Bun runtime APIs in `src/`, no native modules added
 - [ ] No new external network calls
 - [ ] `bun.lock` committed if `package.json` changed
-- [ ] Did not touch `src/mcp/` (unless explicitly requested — see AGENTS.md §10)
+- [ ] Did not touch `src/mcp/` (unless explicitly requested — see DEVELOPMENT.md §10)
 - [ ] Scope matches the request — no drive-by refactors
 
 ## Screenshots / recordings (UI changes only)

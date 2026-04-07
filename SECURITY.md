@@ -27,7 +27,7 @@ VaultSearch is a **local-first** plugin running inside the Obsidian (Electron) d
 - **Path-traversal protection** is required at every file-access boundary (indexer, search results, MCP). Any path-traversal report is treated as critical.
 - **No native modules** — the plugin must not load any code outside the Electron renderer.
 
-See `AGENTS.md` §8 for the full list of critical constraints.
+See [DEVELOPMENT.md §8](./DEVELOPMENT.md#8-critical-constraints) for the full list of critical constraints.
 
 ## Out of scope
 

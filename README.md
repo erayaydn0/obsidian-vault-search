@@ -72,7 +72,7 @@ VaultSearch is built around one rule: **your vault is yours**.
 - No telemetry, no analytics, no tracking
 - No cloud uploads
 - The only network call is the **one-time AI model download** from Hugging Face on first use — after that, the plugin works fully offline
-- The full list of constraints lives in [AGENTS.md §8](./AGENTS.md#8-critical-constraints)
+- The full list of constraints lives in [DEVELOPMENT.md §8](./DEVELOPMENT.md#8-critical-constraints)
 
 ## Requirements
 
@@ -85,7 +85,7 @@ Contributions are very welcome! Whether it's a bug report, an idea, or a pull re
 
 For questions and discussions, head to [GitHub Discussions](https://github.com/erayaydn0/obsidian-vault-search/discussions). For bugs, [open an issue](https://github.com/erayaydn0/obsidian-vault-search/issues/new/choose).
 
-If you're an AI agent (or an engineer who wants the deep dive), [AGENTS.md](./AGENTS.md) is the single source of truth for architecture, conventions, and critical constraints.
+If you want to dive into the architecture and internals, [DEVELOPMENT.md](./DEVELOPMENT.md) is the developer's guide. ([AGENTS.md](./AGENTS.md) is the equivalent reference for AI agents working in the repo.)
 
 ## Tech stack
 

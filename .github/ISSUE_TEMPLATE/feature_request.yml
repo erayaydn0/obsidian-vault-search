@@ -8,7 +8,7 @@ body:
         Have an early-stage idea? Please open a **Discussion** first instead.
         Use this form when you have a concrete proposal.
 
-        ⚠️ The MCP server module (`src/mcp/`) is **frozen** — see AGENTS.md §10.
+        ⚠️ The MCP server module (`src/mcp/`) is **frozen** — see DEVELOPMENT.md §10.
         Feature requests touching MCP will be closed unless coordinated with the maintainer first.
   - type: textarea
     id: problem

@@ -2,7 +2,7 @@
 
 Thanks for your interest in contributing! VaultSearch is an MIT-licensed Obsidian community plugin that provides local-first hybrid search.
 
-Before you start, please read **[AGENTS.md](./AGENTS.md)** — it is the single source of truth for architecture, conventions, and constraints. Everything below assumes you've skimmed it.
+Before you start, please read **[DEVELOPMENT.md](./DEVELOPMENT.md)** — it covers architecture, conventions, and the critical constraints you need to know. Everything below assumes you've skimmed it.
 
 ---
 
@@ -10,7 +10,7 @@ Before you start, please read **[AGENTS.md](./AGENTS.md)** — it is the single 
 
 - **Open an issue first** for anything bigger than a small bug fix or doc tweak. PRs without a linked issue may be closed.
 - **Keep PRs focused.** No drive-by refactors. Bug fixes touch only what they need to.
-- **Do not touch `src/mcp/`** — this module is frozen, see AGENTS.md §10.
+- **Do not touch `src/mcp/`** — this module is frozen, see [DEVELOPMENT.md §10](./DEVELOPMENT.md#10-mcp-server--frozen).
 - **All code, comments, and commit messages in English.**
 - **Be respectful.** This project follows the [Code of Conduct](./CODE_OF_CONDUCT.md).
 
@@ -49,14 +49,14 @@ bun run dev
    ```
    Use `feat/`, `fix/`, `chore/`, `docs/`, `test/`, or `refactor/` prefixes.
 
-2. Make your changes. Follow AGENTS.md §9 (coding rules):
+2. Make your changes. Follow [DEVELOPMENT.md §9](./DEVELOPMENT.md#9-coding-rules) (coding rules):
    - No `any`
    - No `console.log` in committed code
    - No Bun runtime APIs in `src/`
    - No native modules
    - No new external network calls
 
-3. **Add tests** for any new code under `src/core/` or `src/utils/` (AGENTS.md §7).
+3. **Add tests** for any new code under `src/core/` or `src/utils/` ([DEVELOPMENT.md §7](./DEVELOPMENT.md#7-testing)).
 
 4. Run the local checks:
    ```bash

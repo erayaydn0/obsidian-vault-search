@@ -23,5 +23,5 @@ jobs:
             included your Obsidian version, OS, and steps to reproduce.
           pr-message: >
             Thanks for your first pull request to VaultSearch! Please make sure
-            you have read [AGENTS.md](../blob/main/AGENTS.md) and the PR checklist.
+            you have read [DEVELOPMENT.md](../blob/main/DEVELOPMENT.md) and the PR checklist.
             CI will run automatically — a maintainer will review once it is green.
