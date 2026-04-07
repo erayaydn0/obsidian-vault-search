@@ -3,7 +3,7 @@
   "name": "VaultSearch",
   "version": "0.1.0",
   "minAppVersion": "1.4.0",
-  "description": "Local-first hybrid search for your Obsidian vault — combines keyword (BM25), semantic (vector embeddings), and fuzzy title matching. Multilingual, on-device, no cloud.",
+  "description": "Local-first hybrid search for your vault — combines keyword (BM25), semantic (vector embeddings), and fuzzy title matching. Multilingual, on-device, no cloud.",
   "author": "Eray Aydın",
   "authorUrl": "https://github.com/erayaydn0",
   "isDesktopOnly": true
