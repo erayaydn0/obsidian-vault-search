@@ -15,6 +15,14 @@
 import { pipeline as hfPipeline, env as hfEnv } from '@huggingface/transformers';
 
 type AnyPipeline = (text: string, options: Record<string, unknown>) => Promise<{ data: Float32Array }>;
+type ProgressInfo = { loaded?: number; total?: number };
+type OrtxWasmEnv = { proxy?: boolean; numThreads?: number } & Record<string, unknown>;
+type WorkerHFEnv = {
+  backends?: { onnx?: { wasm?: OrtxWasmEnv } & Record<string, unknown> };
+  onnx?: { wasm?: OrtxWasmEnv } & Record<string, unknown>;
+  allowLocalModels?: boolean;
+  useBrowserCache?: boolean;
+} & Record<string, unknown>;
 
 type InitMessage = {
   type: 'init';
@@ -41,11 +49,9 @@ const ctx = self as unknown as {
 
 async function loadModel(msg: InitMessage): Promise<void> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const env = hfEnv as any;
+    const env = hfEnv as unknown as WorkerHFEnv;
 
     // Best-effort: search common locations for the ort wasm env.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ortWasm =
       env?.backends?.onnx?.wasm ??
       env?.backends?.onnx ??
@@ -68,8 +74,7 @@ async function loadModel(msg: InitMessage): Promise<void> {
     pipelineInstance = (await hfPipeline('feature-extraction' as never, msg.modelName, {
       device: 'wasm',
       dtype: 'fp32',
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      progress_callback: (info: any) => {
+      progress_callback: (info: ProgressInfo) => {
         if (typeof info?.loaded === 'number' && typeof info?.total === 'number') {
           ctx.postMessage({ type: 'progress', loaded: info.loaded, total: info.total });
         }

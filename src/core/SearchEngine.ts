@@ -159,11 +159,13 @@ function rrfFusion(
   const scoreMap = new Map<string, { entry: RankedSearchEntry; rrfScore: number }>();
 
   for (let listIndex = 0; listIndex < lists.length; listIndex++) {
-    const list = lists[listIndex]!;
+    const list = lists[listIndex];
+    if (!list) continue;
     const weight = weights[listIndex] ?? 1;
 
     for (let rank = 0; rank < list.length; rank++) {
-      const entry = list[rank]!;
+      const entry = list[rank];
+      if (!entry) continue;
       const key = `${entry.chunk.path}::${entry.chunk.id}`;
       const contribution = weight / (k + rank + 1);
 

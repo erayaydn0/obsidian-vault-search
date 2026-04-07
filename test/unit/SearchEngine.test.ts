@@ -73,7 +73,7 @@ describe('SearchEngine', () => {
     const classicalIdx = results.findIndex((r) => r.path.includes('classical'));
     if (classicalIdx !== -1) {
       // At least one quantum-related note should rank above classical
-      const topResult = results[0]!;
+      const topResult = results[0];
       expect(topResult.path).not.toBe('classical/intro.md');
     }
   });
@@ -82,12 +82,12 @@ describe('SearchEngine', () => {
     const results = await engine.search('quantum');
     const first = results[0];
     expect(first).toBeDefined();
-    expect(typeof first!.path).toBe('string');
-    expect(typeof first!.title).toBe('string');
-    expect(typeof first!.snippet).toBe('string');
-    expect(typeof first!.score).toBe('number');
-    expect(['semantic', 'keyword', 'title', 'hybrid']).toContain(first!.matchType);
-    expect(typeof first!.scores.rrf).toBe('number');
+    expect(typeof first.path).toBe('string');
+    expect(typeof first.title).toBe('string');
+    expect(typeof first.snippet).toBe('string');
+    expect(typeof first.score).toBe('number');
+    expect(['semantic', 'keyword', 'title', 'hybrid']).toContain(first.matchType);
+    expect(typeof first.scores.rrf).toBe('number');
   });
 
   it('getRelated excludes the source note', async () => {

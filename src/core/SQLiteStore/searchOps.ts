@@ -1,4 +1,4 @@
-import type { Chunk, IndexedDocument, RankedSearchEntry, SearchOptions, SearchWeights, StoredChunk } from '../../types';
+import type { Chunk, IndexedDocument, RankedSearchEntry, SearchOptions, StoredChunk } from '../../types';
 import { scoreTitleFuzzy } from '../../utils/jaroWinkler';
 import { computeIdf, cosineSimilarity, pushTopRanked, scoreBM25, tokenize } from './scoring';
 import type { BM25Result, ChunkLookupEntry, EmbeddingCacheEntry, TitleResult, VectorResult } from './storeTypes';
@@ -13,16 +13,17 @@ export class SQLiteSearchOps {
     private readonly buildFilePathMap: BuildFilePathMapFn,
   ) {}
 
-  async bm25Search(query: string, limit: number, excludePaths: string[] = []): Promise<BM25Result[]> {
+  bm25Search(query: string, limit: number, excludePaths: string[] = []): Promise<BM25Result[]> {
     const excluded = new Set(excludePaths);
     const queryWords = tokenize(query);
-    if (queryWords.length === 0) return [];
+    if (queryWords.length === 0) return Promise.resolve([]);
 
     const allChunks = this.collectChunks(excluded);
     const avgTokens = allChunks.length > 0 ? allChunks.reduce((s, r) => s + r.chunk.tokenCount, 0) / allChunks.length : 1;
     const idf = computeIdf(queryWords, allChunks.map(({ chunk }) => chunk));
 
-    return allChunks
+    return Promise.resolve(
+      allChunks
       .map(({ doc, chunk }) => ({
         chunkId: chunk.id,
         fileId: doc.file.id,
@@ -34,7 +35,8 @@ export class SQLiteSearchOps {
       }))
       .filter((r) => r.bm25Score > 0 && !excluded.has(r.path))
       .sort((a, b) => b.bm25Score - a.bm25Score)
-      .slice(0, limit);
+      .slice(0, limit),
+    );
   }
 
   async vectorSearch(

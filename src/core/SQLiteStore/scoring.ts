@@ -3,7 +3,7 @@ import type { RankedSearchEntry } from '../../types';
 export function tokenize(text: string): string[] {
   return text
     .toLowerCase()
-    .split(/[\s\-_.,!?;:()\[\]{}'"]+/)
+    .split(/[\s\-_.,!?;:()[\]{}'"]+/)
     .map((token) => token.trim())
     .filter((token) => token.length > 1);
 }

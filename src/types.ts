@@ -1,4 +1,4 @@
-import { INDEX_DEFAULTS, MODEL_CACHE_DIR, SEARCH_DEFAULTS } from './constants';
+import { INDEX_DEFAULTS, MODEL_CACHE_SUBDIR, SEARCH_DEFAULTS } from './constants';
 
 export interface IndexedFile {
   id: number;
@@ -127,8 +127,6 @@ export interface VaultSearchSettings {
   sidebarEnabled: boolean;
   sidebarLimit: number;
   showScores: boolean;
-  mcpEnabled: boolean;
-  mcpPort: number;
 }
 
 export const DEFAULT_SETTINGS: VaultSearchSettings = {
@@ -137,15 +135,13 @@ export const DEFAULT_SETTINGS: VaultSearchSettings = {
   chunkMaxTokens: INDEX_DEFAULTS.CHUNK_MAX_TOKENS,
   chunkOverlapTokens: INDEX_DEFAULTS.CHUNK_OVERLAP_TOKENS,
   modelName: 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2',
-  modelCacheDir: MODEL_CACHE_DIR,
+  modelCacheDir: MODEL_CACHE_SUBDIR,
   defaultLimit: SEARCH_DEFAULTS.LIMIT,
   searchMode: 'hybrid',
   weights: { bm25: 0.3, vector: 0.6, title: 0.1 },
   sidebarEnabled: true,
   sidebarLimit: 8,
   showScores: false,
-  mcpEnabled: false,
-  mcpPort: 3939,
 };
 
 export type IndexStatus = 'idle' | 'initializing' | 'indexing' | 'error';

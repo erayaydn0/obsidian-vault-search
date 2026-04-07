@@ -87,7 +87,10 @@ export class SQLiteWriteOps {
       }
 
       for (let i = 0; i < parsedFile.chunks.length; i++) {
-        const chunk = parsedFile.chunks[i]!;
+        const chunk = parsedFile.chunks[i];
+        if (!chunk) {
+          continue;
+        }
         const embedding = embeddings[i] ?? new Float32Array(EMBEDDING_DIMENSION);
         const rawBuf = embedding.buffer;
         const embeddingBuffer: ArrayBuffer =

@@ -104,7 +104,7 @@ export class SQLiteCacheManager {
         const raw = c.embedding;
         let emb = new Float32Array(EMBEDDING_DIMENSION);
         if (raw instanceof Uint8Array && raw.byteLength === EMBEDDING_DIMENSION * 4) {
-          emb = new Float32Array(raw.slice().buffer as ArrayBuffer);
+          emb = new Float32Array(raw.slice().buffer);
         } else if (raw instanceof ArrayBuffer && raw.byteLength === EMBEDDING_DIMENSION * 4) {
           emb = new Float32Array(raw);
         }

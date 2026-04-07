@@ -17,7 +17,7 @@ describe('integration: search behavior', () => {
 
       const results = await container.search('quantum entanglement');
       expect(results.length).toBeGreaterThan(0);
-      const top = results[0]!;
+      const top = results[0];
       expect(top.scores.rrf).toBeGreaterThan(0);
       expect(top.matchType).toBe('hybrid');
     } finally {

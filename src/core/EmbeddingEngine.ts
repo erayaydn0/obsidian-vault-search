@@ -197,7 +197,7 @@ export class EmbeddingEngine {
       case 'ready': {
         this.initialized = true;
         this.modelLoadFailed = false;
-        console.info(
+        console.debug(
           `[EmbeddingEngine] Worker loaded HuggingFace model "${this.settings.modelName}"`,
         );
         this.initResolve?.();

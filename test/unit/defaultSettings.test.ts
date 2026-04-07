@@ -11,8 +11,6 @@ describe('DEFAULT_SETTINGS', () => {
       defaultLimit: 10,
       sidebarEnabled: true,
       sidebarLimit: 8,
-      mcpEnabled: false,
-      mcpPort: 3939,
       weights: {
         bm25: 0.3,
         vector: 0.6,

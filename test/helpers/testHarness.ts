@@ -79,12 +79,12 @@ export function makeInMemoryStore(
 }
 
 export class StubEmbeddingEngine extends EmbeddingEngine {
-  override async embed(text: string): Promise<Float32Array> {
+  override embed(text: string): Promise<Float32Array> {
     const vec = new Float32Array(EMBEDDING_DIMENSION);
     for (let i = 0; i < text.length && i < EMBEDDING_DIMENSION; i++) {
       vec[i] = text.charCodeAt(i) / 255;
     }
-    return normalizeVector(vec);
+    return Promise.resolve(normalizeVector(vec));
   }
 
   override async embedBatch(texts: string[]): Promise<Float32Array[]> {

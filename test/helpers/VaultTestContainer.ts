@@ -40,7 +40,7 @@ async function ensureObsidianModules(): Promise<ObsidianModules> {
     class TFile extends TAbstractFile {}
     class Vault {}
 
-    mock.module('obsidian', () => ({ TAbstractFile, TFile, Vault }));
+    void mock.module('obsidian', () => ({ TAbstractFile, TFile, Vault }));
     const { VaultIndexer: VaultIndexerClass } = await import('../../src/core/VaultIndexer');
     const { TFile: TFileClass } = await import('obsidian');
 
@@ -102,7 +102,7 @@ class TestVault {
   }
 
   private makeFile(path: string, mtime: number, size: number): TestFile {
-    const file = Object.create(this.TFileClass.prototype) as TestFile;
+    const file = Object.create(this.TFileClass.prototype as object) as TestFile;
     file.path = path;
     file.extension = path.split('.').pop() ?? '';
     file.stat = { mtime, size, ctime: mtime };

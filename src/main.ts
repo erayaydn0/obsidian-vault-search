@@ -5,7 +5,6 @@ import { EmbeddingEngine } from './core/EmbeddingEngine';
 import { SearchEngine } from './core/SearchEngine';
 import { SQLiteStore } from './core/SQLiteStore/index';
 import { VaultIndexer } from './core/VaultIndexer';
-import { VaultMCPServer } from './mcp/MCPServer';
 import type { VaultSearchSettings } from './types';
 import { DEFAULT_SETTINGS } from './types';
 import { SearchModal } from './ui/SearchModal';
@@ -18,7 +17,6 @@ export default class VaultSearchPlugin extends Plugin {
   embedder!: EmbeddingEngine;
   indexer!: VaultIndexer;
   search!: SearchEngine;
-  mcpServer: VaultMCPServer | null = null;
 
   private statusItem: ReturnType<Plugin['addStatusBarItem']> | null = null;
 
@@ -37,7 +35,8 @@ export default class VaultSearchPlugin extends Plugin {
     // `manifest.dir` is injected by Obsidian at runtime and points to the real
     // plugin folder (which may not match manifest.id — e.g. a dev checkout).
     const pluginAssetDir =
-      (this.manifest as { dir?: string }).dir ?? `.obsidian/plugins/${this.manifest.id}`;
+      (this.manifest as { dir?: string }).dir ??
+      `${this.app.vault.configDir}/plugins/${this.manifest.id}`;
     let workerSource = '';
     let wasmBinary: ArrayBuffer | null = null;
     try {
@@ -119,31 +118,40 @@ export default class VaultSearchPlugin extends Plugin {
       await this.activateSidebar();
     }
 
-    if (this.settings.mcpEnabled) {
-      await this.startMCPServer();
-    }
-
     setTimeout(() => {
       void this.indexer.initialScan().catch((error: unknown) => {
         console.error('[VaultSearch] initial scan failed', error);
-        new Notice('VaultSearch failed while completing the initial scan.');
+        new Notice(`${PLUGIN_NAME}: failed to complete the initial scan.`);
         this.setStatus('error');
       });
     }, 3000);
   }
 
-  async onunload(): Promise<void> {
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE_SIDEBAR);
-    this.mcpServer?.stop();
+  onunload(): void {
     this.embedder?.dispose();
-    await this.store?.close();
+    void this.store?.close();
   }
 
   async loadSettings(): Promise<void> {
+    const configDir = this.app.vault.configDir;
+    const defaultExcludedPaths = [`${configDir}/**`, ...DEFAULT_SETTINGS.excludedPaths];
+    const defaultModelCacheDir = `${configDir}/${DEFAULT_SETTINGS.modelCacheDir}`;
     const loaded = (await this.loadData()) as Partial<VaultSearchSettings> | null;
+    /* Migrate paths from older releases that assumed the default Obsidian config folder name. */
+    /* eslint-disable obsidianmd/hardcoded-config-path -- legacy string stored in data.json */
+    const legacyConfigDirPrefix = '.obsidian/';
+    /* eslint-enable obsidianmd/hardcoded-config-path */
+    const loadedModelCacheDir = loaded?.modelCacheDir?.startsWith(legacyConfigDirPrefix)
+      ? loaded.modelCacheDir.replace(legacyConfigDirPrefix, `${configDir}/`)
+      : loaded?.modelCacheDir;
+    const loadedExcludedPaths = loaded?.excludedPaths?.map((path) =>
+      path.startsWith(legacyConfigDirPrefix) ? path.replace(legacyConfigDirPrefix, `${configDir}/`) : path,
+    );
     this.settings = {
       ...cloneSettings(DEFAULT_SETTINGS),
       ...loaded,
+      excludedPaths: loadedExcludedPaths ?? defaultExcludedPaths,
+      modelCacheDir: loadedModelCacheDir ?? defaultModelCacheDir,
       weights: {
         ...DEFAULT_SETTINGS.weights,
         ...loaded?.weights,
@@ -155,24 +163,6 @@ export default class VaultSearchPlugin extends Plugin {
     await this.saveData(this.settings);
     await this.store?.applySettings(this.settings);
     this.embedder?.applySettings(this.settings);
-  }
-
-  async startMCPServer(): Promise<void> {
-    if (this.mcpServer?.isRunning()) {
-      return;
-    }
-    this.mcpServer = new VaultMCPServer(this.search, this.store, this.settings.mcpPort);
-    await this.mcpServer.start();
-    if (this.mcpServer.isRunning()) {
-      new Notice(`${PLUGIN_NAME}: MCP server started on port ${this.settings.mcpPort}.`);
-    } else {
-      new Notice(`${PLUGIN_NAME}: MCP server failed to start. Check console for details.`);
-    }
-  }
-
-  stopMCPServer(): void {
-    this.mcpServer?.stop();
-    this.mcpServer = null;
   }
 
   private setStatus(text: string): void {

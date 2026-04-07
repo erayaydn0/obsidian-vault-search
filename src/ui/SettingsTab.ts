@@ -1,5 +1,6 @@
 import { Notice, PluginSettingTab, Setting } from 'obsidian';
 
+import { PLUGIN_NAME } from '../constants';
 import type VaultSearchPlugin from '../main';
 
 export class VaultSearchSettingsTab extends PluginSettingTab {
@@ -20,18 +21,18 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
     this.renderChunkSettings(containerEl);
     this.renderSearchSettings(containerEl);
     this.renderSidebarSettings(containerEl);
-    this.renderMcpSettings(containerEl);
   }
 
   private renderGeneralSettings(containerEl: HTMLElement): void {
-    new Setting(containerEl).setName('General').setHeading();
+    new Setting(containerEl).setName('Indexing').setHeading();
+    const configDir = this.app.vault.configDir;
 
     new Setting(containerEl)
       .setName('Excluded paths')
-      .setDesc('One pattern per line. Example: .obsidian/**, *.excalidraw.md')
+      .setDesc(`One pattern per line. Example: ${configDir}/**, *.excalidraw.md`)
       .addTextArea((textArea) => {
         textArea
-          .setPlaceholder('.obsidian/**\nnode_modules/**')
+          .setPlaceholder(`${configDir}/**\nnode_modules/**`)
           .setValue(this.plugin.settings.excludedPaths.join('\n'))
           .onChange(async (value) => {
             this.plugin.settings.excludedPaths = value
@@ -102,7 +103,7 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Search mode')
-      .setDesc('Hybrid: BM25 + semantic + title. Semantic-only: vector similarity only.')
+      .setDesc('Hybrid search uses BM25 with semantic and title signals; semantic-only uses vector similarity only.')
       .addDropdown((dropdown) =>
         dropdown
           .addOption('hybrid', 'Hybrid')
@@ -115,7 +116,7 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
       );
 
     containerEl.createEl('p', {
-      text: 'The sum of BM25 + vector + title weights must be 1.0.',
+      text: 'The weights for BM25, vector, and title must total 1.0.',
       cls: 'setting-item-description',
     });
 
@@ -157,7 +158,7 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Show scores')
-      .setDesc('Show BM25/vector/RRF scores in results.')
+      .setDesc('Include BM25, vector, and RRF scores next to each result.')
       .addToggle((toggle) =>
         toggle.setValue(this.plugin.settings.showScores).onChange(async (value) => {
           this.plugin.settings.showScores = value;
@@ -190,60 +191,6 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
       },
       (value) => !Number.isNaN(value) && value > 0,
     );
-  }
-
-  private renderMcpSettings(containerEl: HTMLElement): void {
-    new Setting(containerEl).setName('MCP server').setHeading();
-
-    new Setting(containerEl)
-      .setName('Enable MCP server')
-      .setDesc('Starts an MCP HTTP server on localhost (Claude Desktop integration).')
-      .addToggle((toggle) =>
-        toggle.setValue(this.plugin.settings.mcpEnabled).onChange(async (value) => {
-          this.plugin.settings.mcpEnabled = value;
-          await this.plugin.saveSettings();
-          if (value) {
-            await this.plugin.startMCPServer();
-          } else {
-            this.plugin.stopMCPServer();
-          }
-        }),
-      );
-
-    this.addIntSetting(
-      containerEl,
-      'MCP port',
-      'Port used by the local MCP server.',
-      '3939',
-      () => this.plugin.settings.mcpPort,
-      (value) => {
-        this.plugin.settings.mcpPort = value;
-      },
-      (value) => !Number.isNaN(value) && value > 0,
-    );
-
-    new Setting(containerEl)
-      .setName('Claude Desktop configuration')
-      .setDesc('Snippet to add into Claude Desktop\'s claude_desktop_config.json.')
-      .addButton((button) =>
-        button.setButtonText('Copy').onClick(() => {
-          const config = JSON.stringify(
-            {
-              mcpServers: {
-                'vault-search': {
-                  url: `http://localhost:${this.plugin.settings.mcpPort}/mcp`,
-                },
-              },
-            },
-            null,
-            2,
-          );
-          navigator.clipboard.writeText(config).then(
-            () => new Notice('Claude Desktop configuration copied to clipboard.'),
-            () => new Notice('Copy failed.'),
-          );
-        }),
-      );
   }
 
   private addIntSetting(
@@ -324,13 +271,13 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
     // Model download progress bar (hidden until model is loading)
     const progressWrapper = section.createDiv({ cls: 'vault-search-progress-bar is-hidden' });
     const progressFill = progressWrapper.createDiv({ cls: 'vault-search-progress-fill' });
-    progressFill.style.setProperty('--vs-progress', '0%');
+    progressFill.setCssProps({ '--vs-progress': '0%' });
 
     this.plugin.embedder?.setProgressCallback((loaded, total) => {
       if (total > 0) {
         const pct = Math.round((loaded / total) * 100);
         progressWrapper.removeClass('is-hidden');
-        progressFill.style.setProperty('--vs-progress', `${pct}%`);
+        progressFill.setCssProps({ '--vs-progress': `${pct}%` });
         if (pct >= 100) {
           window.setTimeout(() => {
             progressWrapper.addClass('is-hidden');
@@ -351,7 +298,7 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
             button.setButtonText('Indexing...').setDisabled(true);
             try {
               await this.plugin.indexer.reindexAll();
-              new Notice('VaultSearch indexing completed.');
+              new Notice(`${PLUGIN_NAME}: indexing complete.`);
             } catch (err) {
               new Notice('Indexing error: ' + String(err));
             } finally {

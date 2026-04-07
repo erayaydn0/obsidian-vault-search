@@ -2,7 +2,7 @@
 import type { Database } from "sql.js";
 
 import {
-  DB_DIR,
+  DB_SUBDIR,
   DB_FILENAME,
   EMBEDDING_DIMENSION,
   SCHEMA_VERSION,
@@ -110,15 +110,16 @@ export class SQLiteStore {
   async initialize(): Promise<void> {
     this.status = "initializing";
     const adapter = this.app.vault.adapter;
+    const dbDir = `${this.app.vault.configDir}/${DB_SUBDIR}`;
 
-    if (!(await adapter.exists(DB_DIR))) {
-      await adapter.mkdir(DB_DIR);
+    if (!(await adapter.exists(dbDir))) {
+      await adapter.mkdir(dbDir);
     }
     if (!(await adapter.exists(this.settings.modelCacheDir))) {
       await adapter.mkdir(this.settings.modelCacheDir);
     }
 
-    this.databasePath = `${DB_DIR}/${DB_FILENAME}`;
+    this.databasePath = `${dbDir}/${DB_FILENAME}`;
 
     try {
       await this.openDatabase();
@@ -205,7 +206,7 @@ export class SQLiteStore {
     if (this.db) {
       try {
         this.db.close();
-      } catch (_) {
+      } catch {
         // ignore
       }
     }

@@ -43,9 +43,10 @@ export class SidebarView extends ItemView {
     await this.refreshForActiveFile();
   }
 
-  async onClose(): Promise<void> {
+  onClose(): Promise<void> {
     this.contentEl.empty();
     this.listEl = null;
+    return Promise.resolve();
   }
 
   // ---------------------------------------------------------------------------

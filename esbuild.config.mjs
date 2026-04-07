@@ -129,8 +129,6 @@ const context = await esbuild.context({
     'electron',
     '@codemirror/*',
     '@lezer/*',
-    '@modelcontextprotocol/sdk',
-    'zod',
   ],
   format: 'cjs',
   platform: 'node',

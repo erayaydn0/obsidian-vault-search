@@ -74,17 +74,18 @@ export class SearchModal extends Modal {
 
     this.isLoading = true;
     this.renderResults(this.results);
-    this.debounceHandle = window.setTimeout(async () => {
+    this.debounceHandle = window.setTimeout(() => {
       const requestId = ++this.latestRequestId;
       this.query = this.inputEl?.value ?? '';
-      const results = await this.search.search(this.query);
-      if (requestId !== this.latestRequestId) {
-        return;
-      }
-      this.isLoading = false;
-      this.results = results;
-      this.selectedIndex = results.length > 0 ? 0 : -1;
-      this.renderResults(results);
+      void this.search.search(this.query).then((results) => {
+        if (requestId !== this.latestRequestId) {
+          return;
+        }
+        this.isLoading = false;
+        this.results = results;
+        this.selectedIndex = results.length > 0 ? 0 : -1;
+        this.renderResults(results);
+      });
     }, SEARCH_DEFAULTS.DEBOUNCE_MS);
   }
 
@@ -125,7 +126,10 @@ export class SearchModal extends Modal {
       case 'Enter':
         event.preventDefault();
         if (this.selectedIndex >= 0) {
-          void this.openResult(this.results[this.selectedIndex]!);
+          const selectedResult = this.results[this.selectedIndex];
+          if (selectedResult) {
+            void this.openResult(selectedResult);
+          }
         }
         break;
     }
@@ -214,7 +218,8 @@ export class SearchModal extends Modal {
     if (!this.resultsEl) return;
 
     for (let index = 0; index < results.length; index++) {
-      const result = results[index]!;
+      const result = results[index];
+      if (!result) continue;
       const item = this.resultsEl.createDiv({
         cls: `vault-search-result${index === this.selectedIndex ? ' is-selected' : ''}`,
       });

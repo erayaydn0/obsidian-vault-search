@@ -8,13 +8,13 @@ export class Helpers {
     return Boolean(db);
   }
 
-  static async runStatement(
+  static runStatement(
     db: Database | null,
     sql: string,
     params: SQLParams = [],
   ): Promise<void> {
     if (!db) {
-      return;
+      return Promise.resolve();
     }
 
     const stmt = db.prepare(sql);
@@ -24,36 +24,37 @@ export class Helpers {
     } finally {
       stmt.free();
     }
+    return Promise.resolve();
   }
 
-  static async queryOne<T extends Record<string, unknown>>(
+  static queryOne<T extends Record<string, unknown>>(
     db: Database | null,
     sql: string,
     params: SQLParams = [],
   ): Promise<T | null> {
     if (!db) {
-      return null;
+      return Promise.resolve(null);
     }
 
     const stmt = db.prepare(sql);
     try {
       Helpers.bindParams(stmt, params);
       if (!stmt.step()) {
-        return null;
+        return Promise.resolve(null);
       }
-      return stmt.getAsObject() as T;
+      return Promise.resolve(stmt.getAsObject() as T);
     } finally {
       stmt.free();
     }
   }
 
-  static async queryAll<T extends Record<string, unknown>>(
+  static queryAll<T extends Record<string, unknown>>(
     db: Database | null,
     sql: string,
     params: SQLParams = [],
   ): Promise<T[]> {
     if (!db) {
-      return [];
+      return Promise.resolve([]);
     }
 
     const stmt = db.prepare(sql);
@@ -63,7 +64,7 @@ export class Helpers {
       while (stmt.step()) {
         rows.push(stmt.getAsObject() as T);
       }
-      return rows;
+      return Promise.resolve(rows);
     } finally {
       stmt.free();
     }

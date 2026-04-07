@@ -22,8 +22,8 @@ describe('SQLiteStore', () => {
 
     const docs = await store.listDocuments();
     expect(docs.length).toBe(1);
-    expect(docs[0]!.file.path).toBe('notes/a.md');
-    expect(docs[0]!.file.title).toBe('Note A');
+    expect(docs[0].file.path).toBe('notes/a.md');
+    expect(docs[0].file.title).toBe('Note A');
   });
 
   it('hasFileChanged returns true for new file', () => {
@@ -57,7 +57,7 @@ describe('SQLiteStore', () => {
 
     const docs = await store.listDocuments();
     expect(docs.length).toBe(1);
-    expect(docs[0]!.file.path).toBe('new/path.md');
+    expect(docs[0].file.path).toBe('new/path.md');
   });
 
   it('upsertFile replaces existing document (no duplicates)', async () => {
@@ -69,7 +69,7 @@ describe('SQLiteStore', () => {
 
     const docs = await store.listDocuments();
     expect(docs.length).toBe(1);
-    expect(docs[0]!.file.title).toBe('Dup Updated');
+    expect(docs[0].file.title).toBe('Dup Updated');
   });
 
   it('getIndexedPaths returns all indexed paths', async () => {
@@ -101,7 +101,7 @@ describe('SQLiteStore', () => {
 
     expect(results.length).toBeGreaterThan(0);
     // Quantum note should score higher for this query
-    expect(results[0]!.file.path).toBe('q.md');
+    expect(results[0].file.path).toBe('q.md');
   });
 
   it('searchBySignal returns three signal lists', async () => {
@@ -133,8 +133,8 @@ describe('SQLiteStore', () => {
       { mtime: 2222, size: 10 },
       [makeOneHotEmbedding(7)],
     );
-    await expect(store.hasFileChangedAsync('mtime.md', 2222)).resolves.toBe(false);
-    await expect(store.hasFileChangedAsync('mtime.md', 3333)).resolves.toBe(true);
+    expect(await store.hasFileChangedAsync('mtime.md', 2222)).toBe(false);
+    expect(await store.hasFileChangedAsync('mtime.md', 3333)).toBe(true);
   });
 
   it('getIndexedPathsAsync returns indexed files without sqlite connection', async () => {
