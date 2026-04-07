@@ -1,6 +1,14 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import {
+  access,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat as fsStat,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 import { EMBEDDING_DIMENSION } from '../../src/constants';
 import { EmbeddingEngine } from '../../src/core/EmbeddingEngine';
@@ -22,12 +30,41 @@ export function createTestSettings(
 }
 
 export function createMockApp(basePath = '/tmp/test-vault'): ConstructorParameters<typeof SQLiteStore>[0] {
-  return {
-    vault: {
-      adapter: {
-        getBasePath: () => basePath,
-      },
+  const resolve = (p: string): string => join(basePath, p);
+  const adapter = {
+    getBasePath: () => basePath,
+    getFullPath: (p: string) => resolve(p),
+    async exists(p: string): Promise<boolean> {
+      try {
+        await access(resolve(p));
+        return true;
+      } catch {
+        return false;
+      }
     },
+    async mkdir(p: string): Promise<void> {
+      await mkdir(resolve(p), { recursive: true });
+    },
+    async readBinary(p: string): Promise<ArrayBuffer> {
+      const buf = await readFile(resolve(p));
+      return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    },
+    async writeBinary(p: string, data: ArrayBuffer): Promise<void> {
+      const abs = resolve(p);
+      await mkdir(dirname(abs), { recursive: true });
+      await writeFile(abs, Buffer.from(data));
+    },
+    async stat(p: string): Promise<{ size: number; ctime: number; mtime: number } | null> {
+      try {
+        const s = await fsStat(resolve(p));
+        return { size: s.size, ctime: s.ctimeMs, mtime: s.mtimeMs };
+      } catch {
+        return null;
+      }
+    },
+  };
+  return {
+    vault: { adapter },
   } as unknown as ConstructorParameters<typeof SQLiteStore>[0];
 }
 

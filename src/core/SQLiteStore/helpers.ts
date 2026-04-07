@@ -1,4 +1,3 @@
-import { writeFile as writeFileFs } from "fs/promises";
 import type { Database, Statement } from "sql.js";
 
 export type SQLParam = string | number | bigint | ArrayBuffer | Uint8Array | null;
@@ -90,7 +89,7 @@ export class Helpers {
 }
 
 type GetDbFn = () => Database | null;
-type GetPathFn = () => string;
+type WriteDbFn = (data: Uint8Array) => Promise<void>;
 
 export class SqlJsPersistenceManager {
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -99,7 +98,7 @@ export class SqlJsPersistenceManager {
 
   constructor(
     private readonly getDb: GetDbFn,
-    private readonly getDatabasePath: GetPathFn,
+    private readonly writeDb: WriteDbFn,
   ) {}
 
   scheduleSave(): void {
@@ -131,13 +130,12 @@ export class SqlJsPersistenceManager {
 
   async flush(): Promise<void> {
     const db = this.getDb();
-    const databasePath = this.getDatabasePath();
-    if (!db || !databasePath) {
+    if (!db) {
       return;
     }
 
     const data = db.export();
-    await writeFileFs(databasePath, Buffer.from(data));
+    await this.writeDb(data);
   }
 
   suspend(): void {

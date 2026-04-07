@@ -14,8 +14,6 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl('h2', { text: 'VaultSearch' });
-
     // Async sections (stats + reindex)
     void this.renderIndexStatus();
     this.renderGeneralSettings(containerEl);
@@ -26,11 +24,11 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
   }
 
   private renderGeneralSettings(containerEl: HTMLElement): void {
-    containerEl.createEl('h3', { text: 'Genel' });
+    new Setting(containerEl).setName('General').setHeading();
 
     new Setting(containerEl)
-      .setName('Hariç tutulan yollar')
-      .setDesc('Satır başına bir desen. Örnek: .obsidian/**, *.excalidraw.md')
+      .setName('Excluded paths')
+      .setDesc('One pattern per line. Example: .obsidian/**, *.excalidraw.md')
       .addTextArea((textArea) => {
         textArea
           .setPlaceholder('.obsidian/**\nnode_modules/**')
@@ -43,13 +41,13 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           });
         textArea.inputEl.rows = 4;
-        textArea.inputEl.style.width = '100%';
+        textArea.inputEl.addClass('vault-search-textarea-wide');
       });
 
     this.addFloatSetting(
       containerEl,
-      'Maksimum dosya boyutu (MB)',
-      'Bu boyutun üzerindeki dosyalar indexlenmez.',
+      'Maximum file size (MB)',
+      'Files larger than this size are not indexed.',
       '1',
       () => this.plugin.settings.maxFileSizeMB,
       (value) => {
@@ -60,8 +58,8 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
 
     this.addIntSetting(
       containerEl,
-      'Varsayılan sonuç limiti',
-      'Arama başına gösterilecek maksimum sonuç sayısı.',
+      'Default result limit',
+      'Maximum number of results shown per search.',
       '10',
       () => this.plugin.settings.defaultLimit,
       (value) => {
@@ -72,12 +70,12 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
   }
 
   private renderChunkSettings(containerEl: HTMLElement): void {
-    containerEl.createEl('h3', { text: 'Parçalama (Chunking)' });
+    new Setting(containerEl).setName('Chunking').setHeading();
 
     this.addIntSetting(
       containerEl,
-      'Maksimum chunk token sayısı',
-      'Her metin parçasının tahmini token limiti (varsayılan: 512).',
+      'Maximum chunk token count',
+      'Approximate token limit for each text chunk (default: 512).',
       '512',
       () => this.plugin.settings.chunkMaxTokens,
       (value) => {
@@ -88,8 +86,8 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
 
     this.addIntSetting(
       containerEl,
-      'Örtüşme token sayısı',
-      'Ardışık chunk\'lar arasındaki örtüşme (varsayılan: 50).',
+      'Chunk overlap token count',
+      'Overlap between consecutive chunks (default: 50).',
       '50',
       () => this.plugin.settings.chunkOverlapTokens,
       (value) => {
@@ -100,15 +98,15 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
   }
 
   private renderSearchSettings(containerEl: HTMLElement): void {
-    containerEl.createEl('h3', { text: 'Arama Ağırlıkları' });
+    new Setting(containerEl).setName('Search weights').setHeading();
 
     new Setting(containerEl)
-      .setName('Arama modu')
-      .setDesc('Hybrid: BM25 + semantik + başlık. Sadece semantik: yalnızca vektör benzerliği.')
+      .setName('Search mode')
+      .setDesc('Hybrid: BM25 + semantic + title. Semantic-only: vector similarity only.')
       .addDropdown((dropdown) =>
         dropdown
-          .addOption('hybrid', 'Hybrid (karma)')
-          .addOption('semantic-only', 'Sadece semantik')
+          .addOption('hybrid', 'Hybrid')
+          .addOption('semantic-only', 'Semantic only')
           .setValue(this.plugin.settings.searchMode)
           .onChange(async (value) => {
             this.plugin.settings.searchMode = value as 'hybrid' | 'semantic-only';
@@ -117,13 +115,13 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
       );
 
     containerEl.createEl('p', {
-      text: 'BM25 + vektör + başlık ağırlıkları toplamı 1.0 olmalıdır.',
+      text: 'The sum of BM25 + vector + title weights must be 1.0.',
       cls: 'setting-item-description',
     });
 
     this.addFloatSetting(
       containerEl,
-      'BM25 (anahtar kelime) ağırlığı',
+      'BM25 (keyword) weight',
       undefined,
       '0.3',
       () => this.plugin.settings.weights.bm25,
@@ -135,7 +133,7 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
 
     this.addFloatSetting(
       containerEl,
-      'Vektör (semantik) ağırlığı',
+      'Vector (semantic) weight',
       undefined,
       '0.6',
       () => this.plugin.settings.weights.vector,
@@ -147,7 +145,7 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
 
     this.addFloatSetting(
       containerEl,
-      'Başlık (title) ağırlığı',
+      'Title weight',
       undefined,
       '0.1',
       () => this.plugin.settings.weights.title,
@@ -158,8 +156,8 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
     );
 
     new Setting(containerEl)
-      .setName('Puanları göster')
-      .setDesc('Sonuçlarda BM25/vektör/RRF puanlarını göster.')
+      .setName('Show scores')
+      .setDesc('Show BM25/vector/RRF scores in results.')
       .addToggle((toggle) =>
         toggle.setValue(this.plugin.settings.showScores).onChange(async (value) => {
           this.plugin.settings.showScores = value;
@@ -169,11 +167,11 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
   }
 
   private renderSidebarSettings(containerEl: HTMLElement): void {
-    containerEl.createEl('h3', { text: 'Kenar Çubuğu' });
+    new Setting(containerEl).setName('Sidebar').setHeading();
 
     new Setting(containerEl)
-      .setName('Kenar çubuğunu etkinleştir')
-      .setDesc('Başlangıçta ilgili notlar kenar çubuğunu açar.')
+      .setName('Enable sidebar')
+      .setDesc('Open the related notes sidebar at startup.')
       .addToggle((toggle) =>
         toggle.setValue(this.plugin.settings.sidebarEnabled).onChange(async (value) => {
           this.plugin.settings.sidebarEnabled = value;
@@ -183,7 +181,7 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
 
     this.addIntSetting(
       containerEl,
-      'Kenar çubuğu sonuç limiti',
+      'Sidebar result limit',
       undefined,
       '8',
       () => this.plugin.settings.sidebarLimit,
@@ -195,11 +193,11 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
   }
 
   private renderMcpSettings(containerEl: HTMLElement): void {
-    containerEl.createEl('h3', { text: 'MCP Sunucusu' });
+    new Setting(containerEl).setName('MCP server').setHeading();
 
     new Setting(containerEl)
-      .setName('MCP sunucusunu etkinleştir')
-      .setDesc('Localhost\'ta bir MCP HTTP sunucusu başlatır (Claude Desktop entegrasyonu).')
+      .setName('Enable MCP server')
+      .setDesc('Starts an MCP HTTP server on localhost (Claude Desktop integration).')
       .addToggle((toggle) =>
         toggle.setValue(this.plugin.settings.mcpEnabled).onChange(async (value) => {
           this.plugin.settings.mcpEnabled = value;
@@ -215,7 +213,7 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
     this.addIntSetting(
       containerEl,
       'MCP port',
-      'Yerel MCP sunucusunun dinleyeceği port.',
+      'Port used by the local MCP server.',
       '3939',
       () => this.plugin.settings.mcpPort,
       (value) => {
@@ -225,10 +223,10 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
     );
 
     new Setting(containerEl)
-      .setName('Claude Desktop yapılandırması')
-      .setDesc(`Claude Desktop'ın claude_desktop_config.json dosyasına eklenecek snippet.`)
+      .setName('Claude Desktop configuration')
+      .setDesc('Snippet to add into Claude Desktop\'s claude_desktop_config.json.')
       .addButton((button) =>
-        button.setButtonText('Kopyala').onClick(() => {
+        button.setButtonText('Copy').onClick(() => {
           const config = JSON.stringify(
             {
               mcpServers: {
@@ -241,8 +239,8 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
             2,
           );
           navigator.clipboard.writeText(config).then(
-            () => new Notice('Claude Desktop yapılandırması panoya kopyalandı.'),
-            () => new Notice('Kopyalama başarısız.'),
+            () => new Notice('Claude Desktop configuration copied to clipboard.'),
+            () => new Notice('Copy failed.'),
           );
         }),
       );
@@ -305,38 +303,37 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
     const containerEl = this.containerEl;
 
     const section = containerEl.createDiv({ cls: 'vault-search-settings-stats' });
-    section.createEl('h3', { text: 'Index Durumu' });
+    new Setting(section).setName('Index status').setHeading();
 
     if (!stats) {
-      section.createEl('p', { text: 'Store başlatılmadı.' });
+      section.createEl('p', { text: 'Store is not initialized.' });
       return;
     }
 
     const list = section.createEl('ul');
-    list.createEl('li', { text: `Toplam dosya: ${stats.totalFiles}` });
-    list.createEl('li', { text: `Toplam chunk: ${stats.totalChunks}` });
-    list.createEl('li', { text: `Durum: ${stats.status}` });
+    list.createEl('li', { text: `Total files: ${stats.totalFiles}` });
+    list.createEl('li', { text: `Total chunks: ${stats.totalChunks}` });
+    list.createEl('li', { text: `Status: ${stats.status}` });
     list.createEl('li', { text: `Model: ${stats.modelName}` });
-    list.createEl('li', { text: `Boyut: ${stats.modelDimension}` });
-    list.createEl('li', { text: `DB boyutu: ${(stats.dbSizeBytes / 1024).toFixed(1)} KB` });
+    list.createEl('li', { text: `Dimension: ${stats.modelDimension}` });
+    list.createEl('li', { text: `DB size: ${(stats.dbSizeBytes / 1024).toFixed(1)} KB` });
     list.createEl('li', {
-      text: `Son tam tarama: ${stats.lastFullIndex ? new Date(stats.lastFullIndex).toLocaleString('tr-TR') : 'hiç yapılmadı'}`,
+      text: `Last full scan: ${stats.lastFullIndex ? new Date(stats.lastFullIndex).toLocaleString('en-US') : 'never'}`,
     });
 
     // Model download progress bar (hidden until model is loading)
-    const progressWrapper = section.createDiv({ cls: 'vault-search-progress-bar' });
+    const progressWrapper = section.createDiv({ cls: 'vault-search-progress-bar is-hidden' });
     const progressFill = progressWrapper.createDiv({ cls: 'vault-search-progress-fill' });
-    progressFill.style.width = '0%';
-    progressWrapper.style.display = 'none';
+    progressFill.style.setProperty('--vs-progress', '0%');
 
     this.plugin.embedder?.setProgressCallback((loaded, total) => {
       if (total > 0) {
         const pct = Math.round((loaded / total) * 100);
-        progressWrapper.style.display = 'block';
-        progressFill.style.width = `${pct}%`;
+        progressWrapper.removeClass('is-hidden');
+        progressFill.style.setProperty('--vs-progress', `${pct}%`);
         if (pct >= 100) {
           window.setTimeout(() => {
-            progressWrapper.style.display = 'none';
+            progressWrapper.addClass('is-hidden');
           }, 1000);
         }
       }
@@ -344,21 +341,21 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
 
     // Reindex button
     new Setting(section)
-      .setName('Tümünü yeniden indexle')
-      .setDesc('Tüm vault\'u sıfırdan tarar. Mevcut index silinir.')
+      .setName('Reindex all')
+      .setDesc('Scans the entire vault from scratch. Existing index is removed.')
       .addButton((button) =>
         button
-          .setButtonText('Yeniden İndeksile')
+          .setButtonText('Reindex')
           .setWarning()
           .onClick(async () => {
-            button.setButtonText('İndeksleniyor...').setDisabled(true);
+            button.setButtonText('Indexing...').setDisabled(true);
             try {
               await this.plugin.indexer.reindexAll();
-              new Notice('VaultSearch indexleme tamamlandı.');
+              new Notice('VaultSearch indexing completed.');
             } catch (err) {
-              new Notice('İndeksleme hatası: ' + String(err));
+              new Notice('Indexing error: ' + String(err));
             } finally {
-              button.setButtonText('Yeniden İndeksile').setDisabled(false);
+              button.setButtonText('Reindex').setDisabled(false);
               this.display();
             }
           }),

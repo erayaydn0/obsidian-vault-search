@@ -1,5 +1,3 @@
-import path from 'node:path';
-
 import { FileSystemAdapter, Notice, Plugin } from 'obsidian';
 
 import { PLUGIN_NAME, VIEW_TYPE_SIDEBAR } from './constants';
@@ -31,19 +29,22 @@ export default class VaultSearchPlugin extends Plugin {
     await this.store.initialize();
 
     this.statusItem = this.addStatusBarItem();
-    this.setStatus('hazır');
+    this.setStatus('ready');
 
-    const basePath =
-      this.app.vault.adapter instanceof FileSystemAdapter
-        ? this.app.vault.adapter.getBasePath()
+    // EmbeddingEngine needs a real OS path because @huggingface/transformers
+    // uses Node's fs module internally for model caching and WASM loading.
+    // getFullPath() is the public FileSystemAdapter API for this.
+    const adapter = this.app.vault.adapter;
+    const pluginDir =
+      adapter instanceof FileSystemAdapter
+        ? adapter.getFullPath(`.obsidian/plugins/${this.manifest.id}`)
         : '';
-    const pluginDir = path.join(basePath, '.obsidian', 'plugins', this.manifest.id);
 
     this.embedder = new EmbeddingEngine(this.settings, pluginDir);
 
     this.embedder.setProgressCallback((loaded, total) => {
       const pct = total > 0 ? Math.round((loaded / total) * 100) : 0;
-      this.setStatus(`model indiriliyor %${pct}`);
+      this.setStatus(`downloading model ${pct}%`);
     });
 
     this.indexer = new VaultIndexer(this.app.vault, this.store, this.embedder, this.settings);
@@ -60,8 +61,7 @@ export default class VaultSearchPlugin extends Plugin {
 
     this.addCommand({
       id: 'open-search',
-      name: 'Aramayı Aç',
-      hotkeys: [{ modifiers: ['Mod', 'Shift'], key: 'f' }],
+      name: 'Open search',
       callback: () => new SearchModal(this.app, this.search).open(),
     });
 
@@ -77,7 +77,7 @@ export default class VaultSearchPlugin extends Plugin {
           (error: unknown) => {
             console.error('[VaultSearch] reindex command failed', error);
             new Notice(`${PLUGIN_NAME}: reindex failed. Check console for details.`);
-            this.setStatus('hata');
+            this.setStatus('error');
           },
         );
       },
@@ -93,11 +93,11 @@ export default class VaultSearchPlugin extends Plugin {
 
     this.indexer.onProgress((progress) => {
       const pct = progress.total > 0 ? Math.round((progress.processed / progress.total) * 100) : 0;
-      this.setStatus(`indexleniyor %${pct}`);
+      this.setStatus(`indexing ${pct}%`);
     });
 
     this.indexer.onComplete(() => {
-      this.setStatus('hazır');
+      this.setStatus('ready');
     });
 
     this.registerVaultEvents();
@@ -113,8 +113,8 @@ export default class VaultSearchPlugin extends Plugin {
     setTimeout(() => {
       void this.indexer.initialScan().catch((error: unknown) => {
         console.error('[VaultSearch] initial scan failed', error);
-        new Notice('VaultSearch ilk taramayı tamamlarken hata aldı.');
-        this.setStatus('hata');
+        new Notice('VaultSearch failed while completing the initial scan.');
+        this.setStatus('error');
       });
     }, 3000);
   }

@@ -13,6 +13,7 @@ export function scoreBM25(
   content: string,
   chunkTokenCount: number,
   avgChunkTokens: number,
+  idf: Map<string, number>,
   k1 = 1.5,
   b = 0.75,
 ): number {
@@ -26,15 +27,48 @@ export function scoreBM25(
 
   const normFactor = 1 - b + b * (chunkTokenCount / avgChunkTokens);
   let score = 0;
+  let maxScore = 0;
 
   for (const term of queryWords) {
+    const termIdf = idf.get(term) ?? 0;
+    if (termIdf <= 0) continue;
+    maxScore += termIdf * (k1 + 1);
     const tf = termFrequencies.get(term) ?? 0;
     if (tf === 0) continue;
-    score += (tf * (k1 + 1)) / (tf + k1 * normFactor);
+    score += (termIdf * tf * (k1 + 1)) / (tf + k1 * normFactor);
   }
 
-  const maxScore = queryWords.length * (k1 + 1);
   return maxScore > 0 ? score / maxScore : 0;
+}
+
+/**
+ * Compute IDF for each unique query term across the provided chunks.
+ * IDF(t) = ln((N - df + 0.5) / (df + 0.5) + 1) — the standard BM25+ variant (always ≥ 0).
+ */
+export function computeIdf(
+  queryWords: string[],
+  chunks: Array<{ content: string }>,
+): Map<string, number> {
+  const idf = new Map<string, number>();
+  if (queryWords.length === 0 || chunks.length === 0) return idf;
+
+  const uniqueTerms = new Set(queryWords);
+  const df = new Map<string, number>();
+  for (const term of uniqueTerms) df.set(term, 0);
+
+  for (const { content } of chunks) {
+    const seen = new Set(tokenize(content));
+    for (const term of uniqueTerms) {
+      if (seen.has(term)) df.set(term, (df.get(term) ?? 0) + 1);
+    }
+  }
+
+  const N = chunks.length;
+  for (const term of uniqueTerms) {
+    const dfValue = df.get(term) ?? 0;
+    idf.set(term, Math.log((N - dfValue + 0.5) / (dfValue + 0.5) + 1));
+  }
+  return idf;
 }
 
 export function cosineSimilarity(left: Float32Array, right: Float32Array): number {

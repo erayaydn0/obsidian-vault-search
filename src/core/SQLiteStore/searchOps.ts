@@ -1,6 +1,6 @@
 import type { Chunk, IndexedDocument, RankedSearchEntry, SearchOptions, SearchWeights, StoredChunk } from '../../types';
 import { scoreTitleFuzzy } from '../../utils/jaroWinkler';
-import { cosineSimilarity, pushTopRanked, scoreBM25, tokenize } from './scoring';
+import { computeIdf, cosineSimilarity, pushTopRanked, scoreBM25, tokenize } from './scoring';
 import type { BM25Result, ChunkLookupEntry, EmbeddingCacheEntry, TitleResult, VectorResult } from './storeTypes';
 
 type BuildFilePathMapFn = () => Promise<Map<number, string>>;
@@ -20,6 +20,7 @@ export class SQLiteSearchOps {
 
     const allChunks = this.collectChunks(excluded);
     const avgTokens = allChunks.length > 0 ? allChunks.reduce((s, r) => s + r.chunk.tokenCount, 0) / allChunks.length : 1;
+    const idf = computeIdf(queryWords, allChunks.map(({ chunk }) => chunk));
 
     return allChunks
       .map(({ doc, chunk }) => ({
@@ -29,7 +30,7 @@ export class SQLiteSearchOps {
         title: doc.file.title,
         content: chunk.content,
         heading: chunk.heading,
-        bm25Score: scoreBM25(queryWords, chunk.content, chunk.tokenCount, avgTokens),
+        bm25Score: scoreBM25(queryWords, chunk.content, chunk.tokenCount, avgTokens, idf),
       }))
       .filter((r) => r.bm25Score > 0 && !excluded.has(r.path))
       .sort((a, b) => b.bm25Score - a.bm25Score)
@@ -100,10 +101,11 @@ export class SQLiteSearchOps {
     const allChunks = this.collectChunks(excludedPaths);
     if (allChunks.length === 0) return [];
     const avgChunkTokens = allChunks.reduce((sum, { chunk }) => sum + chunk.tokenCount, 0) / allChunks.length;
+    const idf = computeIdf(queryWords, allChunks.map(({ chunk }) => chunk));
 
     const results: RankedSearchEntry[] = [];
     for (const { doc, chunk } of allChunks) {
-      const bm25Score = scoreBM25(queryWords, chunk.content, chunk.tokenCount, avgChunkTokens);
+      const bm25Score = scoreBM25(queryWords, chunk.content, chunk.tokenCount, avgChunkTokens, idf);
       const vectorScore = cosineSimilarity(queryEmbedding, chunk.embedding);
       const titleScore = scoreTitleFuzzy(query, doc.file.title);
       const weights = options.weights;
@@ -133,13 +135,14 @@ export class SQLiteSearchOps {
     const allChunks = this.collectChunks(excludedPathsSet);
     if (allChunks.length === 0) return { bm25Results: [], vectorResults: [], titleResults: [] };
     const avgChunkTokens = allChunks.reduce((sum, { chunk }) => sum + chunk.tokenCount, 0) / allChunks.length;
+    const idf = computeIdf(queryWords, allChunks.map(({ chunk }) => chunk));
 
     const bm25Results: RankedSearchEntry[] = [];
     const vectorResults: RankedSearchEntry[] = [];
     const titleResults: RankedSearchEntry[] = [];
 
     for (const { doc, chunk } of allChunks) {
-      const bm25Score = scoreBM25(queryWords, chunk.content, chunk.tokenCount, avgChunkTokens);
+      const bm25Score = scoreBM25(queryWords, chunk.content, chunk.tokenCount, avgChunkTokens, idf);
       const vectorScore = cosineSimilarity(queryEmbedding, chunk.embedding);
       const titleScore = chunk.chunkIdx === 0 ? scoreTitleFuzzy(query, doc.file.title) : 0;
       const baseEntry = {

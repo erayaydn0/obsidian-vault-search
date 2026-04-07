@@ -305,15 +305,6 @@
   border: 1px solid var(--background-modifier-border);
 }
 
-.vault-search-settings-stats h3 {
-  margin-top: 0;
-  margin-bottom: var(--size-4-2);
-  font-size: var(--font-ui-small);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-}
-
 .vault-search-settings-stats ul {
   margin: 0;
   padding-left: var(--size-4-3);
@@ -334,9 +325,18 @@
   overflow: hidden;
 }
 
+.vault-search-progress-bar.is-hidden {
+  display: none;
+}
+
 .vault-search-progress-fill {
   height: 100%;
+  width: var(--vs-progress, 0%);
   background-color: var(--interactive-accent);
   border-radius: 2px;
   transition: width 200ms ease;
+}
+
+.vault-search-textarea-wide {
+  width: 100%;
 }

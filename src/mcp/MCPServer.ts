@@ -202,27 +202,24 @@ export class VaultMCPServer {
 
       this.httpServer.listen(this.port, '127.0.0.1', () => {
         this.running = true;
-        console.log(`[VaultSearch MCP] Listening on http://127.0.0.1:${this.port}/mcp`);
-        new Notice(`VaultSearch MCP sunucusu başlatıldı (port ${this.port}).`);
+        new Notice(`VaultSearch MCP server started (port ${this.port}).`);
       });
 
       this.httpServer.on('error', (err: NodeJS.ErrnoException) => {
         console.error('[VaultSearch MCP] server error', err);
         if (err.code === 'EADDRINUSE') {
-          new Notice(`VaultSearch MCP: port ${this.port} zaten kullanımda.`);
+          new Notice(`VaultSearch MCP: port ${this.port} is already in use.`);
         }
         this.running = false;
       });
     } catch (err) {
       console.error('[VaultSearch MCP] Failed to start:', err);
-      new Notice('VaultSearch MCP sunucusu başlatılamadı: ' + String(err));
+      new Notice('VaultSearch MCP server could not be started: ' + String(err));
     }
   }
 
   stop(): void {
-    this.httpServer?.close(() => {
-      console.log('[VaultSearch MCP] Server stopped.');
-    });
+    this.httpServer?.close();
     this.httpServer = null;
     this.running = false;
   }

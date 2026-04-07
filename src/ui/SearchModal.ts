@@ -31,7 +31,7 @@ export class SearchModal extends Modal {
     const inputWrapper = contentEl.createDiv({ cls: 'vault-search-input-wrapper' });
     this.inputEl = inputWrapper.createEl('input', {
       type: 'search',
-      placeholder: 'Notlarınızda arayın...',
+      placeholder: 'Search your notes...',
       cls: 'vault-search-input',
     });
     this.inputEl.setAttribute('role', 'combobox');
@@ -52,7 +52,7 @@ export class SearchModal extends Modal {
     this.resultsEl = contentEl.createDiv({ cls: 'vault-search-results' });
     this.resultsEl.id = this.listboxId;
     this.resultsEl.setAttribute('role', 'listbox');
-    this.resultsEl.setAttribute('aria-label', 'Arama sonuçları');
+    this.resultsEl.setAttribute('aria-label', 'Search results');
     this.renderResults([]);
 
     window.setTimeout(() => this.inputEl?.focus(), 0);
@@ -167,14 +167,14 @@ export class SearchModal extends Modal {
     this.inputEl.removeAttribute('aria-activedescendant');
 
     if (this.isLoading && trimmedQuery.length >= SEARCH_DEFAULTS.MIN_QUERY_LENGTH) {
-      this.resultsEl.createEl('p', { text: 'Aranıyor...', cls: 'vault-search-hint vault-search-hint-loading' });
-      this.setStatus('Arama yapılıyor...');
+      this.resultsEl.createEl('p', { text: 'Searching...', cls: 'vault-search-hint vault-search-hint-loading' });
+      this.setStatus('Searching...');
       return;
     }
 
     if (trimmedQuery.length > 0 && trimmedQuery.length < SEARCH_DEFAULTS.MIN_QUERY_LENGTH) {
       this.resultsEl.createEl('p', { text: 'En az 2 karakter girin.', cls: 'vault-search-hint' });
-      this.setStatus('Arama için en az 2 karakter girin.');
+      this.setStatus('Enter at least 2 characters to search.');
       return;
     }
 
@@ -182,19 +182,19 @@ export class SearchModal extends Modal {
       this.resultsEl.createEl('p', {
         text:
           trimmedQuery.length >= SEARCH_DEFAULTS.MIN_QUERY_LENGTH
-            ? `"${this.query}" için sonuç bulunamadı.`
-            : 'Aramak için yazmaya başlayın.',
+            ? `No results found for "${this.query}".`
+            : 'Start typing to search.',
         cls: 'vault-search-hint',
       });
       if (trimmedQuery.length >= SEARCH_DEFAULTS.MIN_QUERY_LENGTH) {
-        this.setStatus(`"${this.query}" için sonuç bulunamadı.`);
+        this.setStatus(`No results found for "${this.query}".`);
       } else {
-        this.setStatus('Aramak için yazmaya başlayın.');
+        this.setStatus('Start typing to search.');
       }
       return;
     }
 
-    this.setStatus(`${results.length} sonuç bulundu.`);
+    this.setStatus(`${results.length} result(s) found.`);
     for (let index = 0; index < results.length; index++) {
       const result = results[index]!;
       const item = this.resultsEl.createDiv({

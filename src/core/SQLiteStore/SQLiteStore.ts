@@ -1,6 +1,4 @@
-﻿import { mkdir, readFile } from "fs/promises";
-import { join } from "node:path";
-import type { App } from "obsidian";
+﻿import type { App } from "obsidian";
 import type { Database } from "sql.js";
 
 import {
@@ -46,7 +44,13 @@ export class SQLiteStore {
   private bulkIndexDepth = 0;
   private readonly persistence = new SqlJsPersistenceManager(
     () => this.db,
-    () => this.databasePath,
+    async (data) => {
+      if (!this.databasePath) return;
+      // Adapter API expects ArrayBuffer; copy into a fresh one so sql.js's
+      // backing buffer is not mutated underneath us.
+      const buffer = data.slice().buffer;
+      await this.app.vault.adapter.writeBinary(this.databasePath, buffer);
+    },
   );
 
   // In-memory embedding cache for fast cosine search
@@ -105,14 +109,16 @@ export class SQLiteStore {
 
   async initialize(): Promise<void> {
     this.status = "initializing";
-    const vaultBasePath = this.getVaultBasePath();
-    const databaseDir = join(vaultBasePath, DB_DIR);
-    const modelCacheDir = join(vaultBasePath, this.settings.modelCacheDir);
+    const adapter = this.app.vault.adapter;
 
-    await mkdir(databaseDir, { recursive: true });
-    await mkdir(modelCacheDir, { recursive: true });
+    if (!(await adapter.exists(DB_DIR))) {
+      await adapter.mkdir(DB_DIR);
+    }
+    if (!(await adapter.exists(this.settings.modelCacheDir))) {
+      await adapter.mkdir(this.settings.modelCacheDir);
+    }
 
-    this.databasePath = join(databaseDir, DB_FILENAME);
+    this.databasePath = `${DB_DIR}/${DB_FILENAME}`;
 
     try {
       await this.openDatabase();
@@ -136,10 +142,11 @@ export class SQLiteStore {
       wasmBinary: SQLiteStore.copyWasm(bundledSqlJsWasm) as unknown as ArrayBuffer,
     });
 
-    try {
-      const persisted = await readFile(this.databasePath);
+    const adapter = this.app.vault.adapter;
+    if (await adapter.exists(this.databasePath)) {
+      const persisted = await adapter.readBinary(this.databasePath);
       this.db = new SQL.Database(new Uint8Array(persisted));
-    } catch {
+    } else {
       this.db = new SQL.Database();
     }
   }
@@ -183,7 +190,6 @@ export class SQLiteStore {
       "SELECT value FROM meta WHERE key = 'model_name'",
     );
     if (modelRow && modelRow.value !== this.settings.modelName) {
-      console.log("[VaultSearch] Model changed, rebuilding index…");
       await this.clearAllData();
     }
     await this.run(
@@ -478,22 +484,15 @@ export class SQLiteStore {
       documents: this.documents,
       hasSqlite: Helpers.hasSqliteConnection(this.db),
       queryOne: (sql, params) => Helpers.queryOne(this.db, sql, params),
-      databasePath: this.databasePath,
+      getDbSizeBytes: async () => {
+        if (!this.databasePath) return 0;
+        const stat = await this.app.vault.adapter.stat(this.databasePath);
+        return stat?.size ?? 0;
+      },
       lastFullIndex: this.lastFullIndex,
       modelName: this.settings.modelName,
       status: this.status,
     });
-  }
-
-  // ─── Private helpers ──────────────────────────────────────────────────────
-
-  private getVaultBasePath(): string {
-    const adapter = this.app.vault.adapter as { getBasePath?: () => string };
-    const basePath = adapter.getBasePath?.();
-    if (!basePath) {
-      throw new Error("VaultSearch requires desktop filesystem access.");
-    }
-    return basePath;
   }
 
   // ─── Low-level SQLite helpers ─────────────────────────────────────────────

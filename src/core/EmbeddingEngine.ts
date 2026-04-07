@@ -1,6 +1,5 @@
-import path from 'node:path';
-
 import { EMBEDDING_DIMENSION } from '../constants';
+import { bundledOrtWasm } from '../ortWasmBundled';
 import type { VaultSearchSettings } from '../types';
 
 type ProgressCallback = (loaded: number, total: number) => void;
@@ -68,11 +67,11 @@ export class EmbeddingEngine {
     await this.initialize();
     const results: Float32Array[] = [];
     for (let i = 0; i < texts.length; i++) {
+      // Yield to the event loop *before* each ONNX call so the renderer can paint
+      // and user input is processed between heavy inferences. Idle callback gives
+      // UI work priority; falls back to a modest timeout in non-browser contexts.
+      await yieldToIdle();
       results.push(await this.embed(texts[i]!));
-      // Yield between every other chunk so the renderer can paint between ONNX calls.
-      if (i % 2 === 1) {
-        await new Promise<void>((r) => setTimeout(r, 0));
-      }
     }
     return results;
   }
@@ -109,18 +108,10 @@ export class EmbeddingEngine {
       // Force single-threaded execution; SharedArrayBuffer is not available in Obsidian.
       ort.env.wasm['numThreads'] = 1;
 
-      // Provide the WASM binary directly from disk so ort never tries to fetch() it.
-      // fetch() / URL loading fails in Obsidian's sandboxed renderer.
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const fs = require('fs') as typeof import('fs');
-      const wasmFilePath = path.join(
-        this.pluginDir,
-        'node_modules',
-        'onnxruntime-web',
-        'dist',
-        'ort-wasm-simd-threaded.wasm',
-      );
-      ort.env.wasm['wasmBinary'] = new Uint8Array(fs.readFileSync(wasmFilePath));
+      // Provide the WASM binary directly from the bundled asset so ort never tries to
+      // fetch() it. fetch() / URL loading fails in Obsidian's sandboxed renderer, and
+      // reading from node_modules at runtime doesn't work once the plugin is installed.
+      ort.env.wasm['wasmBinary'] = Uint8Array.from(bundledOrtWasm);
 
       // Set wasmPaths to a truthy value so transformers' CDN auto-fill is skipped.
       ort.env.wasm['wasmPaths'] = {};
@@ -157,8 +148,11 @@ export class EmbeddingEngine {
       });
 
       this.initialized = true;
+      console.info(
+        `[EmbeddingEngine] Loaded HuggingFace model "${this.settings.modelName}" (cacheDir=${this.settings.modelCacheDir})`,
+      );
     } catch (err) {
-      console.warn('[EmbeddingEngine] Failed to load HuggingFace model, using fallback embedding:', err);
+      console.error('[EmbeddingEngine] Failed to load HuggingFace model, using fallback embedding:', err);
       this.initialized = true; // Mark initialized so we don't retry on every embed call
     }
   }
@@ -175,6 +169,17 @@ export class EmbeddingEngine {
     }
     return normalizeVector(vector);
   }
+}
+
+function yieldToIdle(): Promise<void> {
+  return new Promise((resolve) => {
+    const ric = (globalThis as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => void }).requestIdleCallback;
+    if (typeof ric === 'function') {
+      ric(() => resolve(), { timeout: 50 });
+    } else {
+      setTimeout(resolve, 0);
+    }
+  });
 }
 
 function normalizeVector(vector: Float32Array): Float32Array {

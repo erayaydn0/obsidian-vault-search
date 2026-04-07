@@ -22,7 +22,7 @@ export class SidebarView extends ItemView {
   }
 
   getDisplayText(): string {
-    return 'İlgili Notlar';
+    return 'Related notes';
   }
 
   getIcon(): string {
@@ -33,7 +33,7 @@ export class SidebarView extends ItemView {
     this.contentEl.empty();
     this.contentEl.addClass('vault-search-sidebar');
 
-    this.contentEl.createEl('h3', { text: 'İlgili Notlar', cls: 'vault-search-sidebar-title' });
+    this.contentEl.createDiv({ text: 'Related notes', cls: 'vault-search-sidebar-title' });
     this.listEl = this.contentEl.createDiv({ cls: 'vault-search-sidebar-list' });
 
     this.registerEvent(
@@ -68,7 +68,7 @@ export class SidebarView extends ItemView {
 
     if (!path) {
       this.listEl.createEl('p', {
-        text: 'İlgili notları görmek için bir not açın.',
+        text: 'Open a note to see related notes.',
         cls: 'vault-search-sidebar-hint',
       });
       return;
@@ -76,7 +76,7 @@ export class SidebarView extends ItemView {
 
     // Show loading state
     const loadingEl = this.listEl.createEl('p', {
-      text: 'Yükleniyor...',
+      text: 'Loading...',
       cls: 'vault-search-sidebar-hint',
     });
 
@@ -96,7 +96,7 @@ export class SidebarView extends ItemView {
 
     if (hasError) {
       this.listEl.createEl('p', {
-        text: 'İlgili notlar yüklenirken hata oluştu.',
+        text: 'An error occurred while loading related notes.',
         cls: 'vault-search-sidebar-hint',
       });
       return;
@@ -104,7 +104,7 @@ export class SidebarView extends ItemView {
 
     if (results.length === 0) {
       this.listEl.createEl('p', {
-        text: 'İlgili not bulunamadı.',
+        text: 'No related notes found.',
         cls: 'vault-search-sidebar-hint',
       });
       return;

@@ -1,5 +1,3 @@
-import { stat } from 'fs/promises';
-
 import { EMBEDDING_DIMENSION } from '../../constants';
 import type { IndexedDocument, IndexStats, IndexStatus } from '../../types';
 
@@ -12,7 +10,7 @@ export async function buildStats(params: {
   documents: Map<string, IndexedDocument>;
   hasSqlite: boolean;
   queryOne: QueryOneFn;
-  databasePath: string;
+  getDbSizeBytes: () => Promise<number>;
   lastFullIndex: number | null;
   modelName: string;
   status: IndexStatus;
@@ -31,12 +29,10 @@ export async function buildStats(params: {
   }
 
   let dbSizeBytes = 0;
-  if (params.databasePath) {
-    try {
-      dbSizeBytes = (await stat(params.databasePath)).size;
-    } catch {
-      dbSizeBytes = 0;
-    }
+  try {
+    dbSizeBytes = await params.getDbSizeBytes();
+  } catch {
+    dbSizeBytes = 0;
   }
 
   return {

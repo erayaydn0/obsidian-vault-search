@@ -79,7 +79,7 @@ export class VaultIndexer {
     }
 
     if (errors.length > 0) {
-      console.warn('[VaultSearch] initialScan completed with errors', {
+      console.error('[VaultSearch] initialScan completed with errors', {
         totalFiles: files.length,
         indexedCount,
         errorCount: errors.length,
@@ -162,7 +162,15 @@ export class VaultIndexer {
 
     const content = await this.vault.cachedRead(file);
     const parsed = this.parser.parse(file.path, content);
-    const embeddings = await this.embedder.embedBatch(parsed.chunks.map((chunk) => chunk.content));
+    // Prefix title + heading so short chunks carry document-level context into the vector.
+    // Stored content is unchanged — only the embedding input is enriched.
+    const embeddingInputs = parsed.chunks.map((chunk) => {
+      const parts = [parsed.title];
+      if (chunk.heading) parts.push(chunk.heading);
+      parts.push(chunk.content);
+      return parts.join('\n');
+    });
+    const embeddings = await this.embedder.embedBatch(embeddingInputs);
     await this.store.upsertFile(
       parsed,
       {

@@ -236,7 +236,7 @@ These are non-negotiable. Violating any of them will break the plugin in user va
 
 ## 9. Coding Rules
 
-- **Language:** all code, comments, identifiers, and commit messages in **English**. (User-facing strings in `main.ts` / UI may currently mix Turkish and English — that is intentional and the maintainer's choice; do not "fix" them.)
+- **Language:** all code, comments, identifiers, and commit messages in **English**. User-facing strings are in **English** and **must follow Obsidian's sentence case rule** — only the first word and proper nouns are capitalized. For example: `"Search weights"` ✅, `"Search Weights"` ❌.
 - **`any` is forbidden.** Use `unknown` + a narrowing check, or define a proper type. If you genuinely need an escape hatch, use the narrowest possible cast and leave a one-line comment explaining why.
 - **TypeScript strictness:** keep `tsc --noEmit` clean. No new errors, no new warnings.
 - **File and class naming:** match the existing convention — `PascalCase.ts` for classes (`SearchEngine.ts`, `VaultIndexer.ts`), `camelCase.ts` for utilities (`jaroWinkler.ts`, `snippetExtractor.ts`), folder modules use a barrel `index.ts` (see `src/core/SQLiteStore/`).

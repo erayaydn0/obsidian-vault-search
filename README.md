@@ -61,7 +61,7 @@ All of this happens locally, in milliseconds, on your own computer.
 
 ## Usage
 
-- **Search:** press `Ctrl/Cmd + Shift + F` to open the search modal, type your query, hit Enter.
+- **Search:** run the **VaultSearch: Open search** command from the command palette (or assign your own hotkey under **Settings → Hotkeys**), type your query, hit Enter.
 - **Related notes:** open the right sidebar — VaultSearch shows notes related to whatever you're currently viewing.
 - **Settings:** customize chunk sizes, ranking weights, and indexing behavior under **Settings → VaultSearch**.
 
