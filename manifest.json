@@ -1,0 +1,10 @@
+{
+  "id": "vault-search",
+  "name": "VaultSearch",
+  "version": "0.1.0",
+  "minAppVersion": "1.4.0",
+  "description": "Hybrid semantic search for your Obsidian vault",
+  "author": "Eray Aydın",
+  "authorUrl": "https://github.com/erayaydn0",
+  "isDesktopOnly": true
+}

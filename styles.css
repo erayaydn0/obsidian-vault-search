@@ -1,0 +1,342 @@
+/* VaultSearch Plugin Styles
+   Uses Obsidian CSS variables for full theme compatibility. */
+
+/* ─── Search Modal ─────────────────────────────────────────────────────────── */
+
+.vault-search-modal {
+  width: min(760px, 92vw);
+  max-width: calc(100vw - var(--size-4-4));
+}
+
+.vault-search-modal .modal-content {
+  padding: var(--size-4-4);
+  max-height: min(85vh, 880px);
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-2-2);
+}
+
+.vault-search-input-wrapper {
+  position: relative;
+  margin-bottom: var(--size-4-2);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background-color: var(--background-primary-alt);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 2%);
+  overflow: hidden;
+}
+
+.vault-search-input {
+  width: 100%;
+  height: 42px;
+  padding: 0 var(--size-4-3);
+  font-size: var(--font-ui-medium);
+  background-color: transparent;
+  border: 0;
+  border-radius: 0;
+  color: var(--text-normal);
+  outline: none;
+  box-sizing: border-box;
+  line-height: 42px;
+}
+
+.vault-search-input:focus {
+  box-shadow: none;
+}
+
+.vault-search-input::placeholder {
+  color: var(--text-faint);
+}
+
+.vault-search-input-wrapper:focus-within {
+  border-color: var(--background-modifier-border-focus);
+  box-shadow:
+    0 0 0 1px var(--interactive-accent),
+    inset 0 1px 0 rgb(255 255 255 / 3%);
+}
+
+.vault-search-status {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  min-height: 1.3em;
+  margin-bottom: var(--size-2-2);
+}
+
+.vault-search-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ─── Results List ──────────────────────────────────────────────────────────── */
+
+.vault-search-results {
+  max-height: min(58vh, 560px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-2-2);
+}
+
+.vault-search-hint {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  padding: var(--size-4-3) var(--size-4-2);
+  text-align: center;
+  border: 1px dashed var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background-color: var(--background-secondary);
+}
+
+.vault-search-hint-loading {
+  color: var(--text-accent);
+}
+
+.vault-search-result {
+  padding: var(--size-4-2);
+  border-radius: var(--radius-m);
+  cursor: pointer;
+  border: 1px solid var(--background-modifier-border-hover);
+  background-color: var(--background-primary);
+  transition: background-color 80ms ease, border-color 80ms ease, box-shadow 80ms ease;
+}
+
+.vault-search-result:hover,
+.vault-search-result.is-selected {
+  background-color: var(--background-modifier-hover);
+  border-color: var(--background-modifier-border-focus);
+}
+
+.vault-search-result.is-selected {
+  box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+.vault-search-result:focus-visible {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.vault-search-result-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--size-2-3);
+  margin-bottom: var(--size-2-1);
+}
+
+.vault-search-result-title {
+  font-weight: var(--font-semibold);
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vault-search-result-badge {
+  font-size: var(--font-ui-smaller);
+  padding: 1px var(--size-2-2);
+  border-radius: var(--radius-s);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: var(--font-normal);
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.vault-search-badge-hybrid {
+  background-color: var(--color-purple);
+  color: var(--text-on-accent);
+}
+
+.vault-search-badge-semantic {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.vault-search-badge-keyword {
+  background-color: var(--color-orange);
+  color: var(--text-on-accent);
+}
+
+.vault-search-badge-title {
+  background-color: var(--color-green);
+  color: var(--text-on-accent);
+}
+
+.vault-search-result-heading {
+  font-size: var(--font-ui-small);
+  color: var(--text-accent);
+  margin-bottom: 2px;
+}
+
+.vault-search-result-snippet {
+  font-size: var(--font-ui-small);
+  color: var(--text-normal);
+  line-height: var(--line-height-tight);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.vault-search-result-path {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  margin-top: var(--size-2-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .vault-search-modal {
+    width: min(96vw, 680px);
+  }
+
+  .vault-search-modal .modal-content {
+    padding: var(--size-4-2);
+  }
+
+  .vault-search-input {
+    padding: var(--size-2-3) var(--size-4-2);
+    font-size: var(--font-ui-small);
+  }
+
+  .vault-search-results {
+    max-height: 52vh;
+    gap: var(--size-2-1);
+  }
+
+  .vault-search-result {
+    padding: var(--size-2-3);
+  }
+
+  .vault-search-result-title {
+    font-size: var(--font-ui-small);
+  }
+
+  .vault-search-result-snippet {
+    -webkit-line-clamp: 3;
+  }
+}
+
+/* ─── Sidebar ───────────────────────────────────────────────────────────────── */
+
+.vault-search-sidebar {
+  padding: var(--size-4-2);
+}
+
+.vault-search-sidebar-title {
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: var(--size-4-2);
+}
+
+.vault-search-sidebar-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-2-2);
+}
+
+.vault-search-sidebar-hint {
+  color: var(--text-faint);
+  font-size: var(--font-ui-small);
+  text-align: center;
+  padding: var(--size-4-2) 0;
+}
+
+.vault-search-sidebar-item {
+  padding: var(--size-2-3) var(--size-2-3);
+  border-radius: var(--radius-m);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 80ms ease;
+}
+
+.vault-search-sidebar-item:hover {
+  background-color: var(--background-modifier-hover);
+  border-color: var(--background-modifier-border);
+}
+
+.vault-search-sidebar-item-title {
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-semibold);
+  color: var(--text-normal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: grab;
+}
+
+.vault-search-sidebar-item-snippet {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  line-height: var(--line-height-tight);
+  margin-top: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ─── Settings ──────────────────────────────────────────────────────────────── */
+
+.vault-search-settings-stats {
+  margin-top: var(--size-4-4);
+  padding: var(--size-4-3);
+  background-color: var(--background-secondary);
+  border-radius: var(--radius-m);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.vault-search-settings-stats h3 {
+  margin-top: 0;
+  margin-bottom: var(--size-4-2);
+  font-size: var(--font-ui-small);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.vault-search-settings-stats ul {
+  margin: 0;
+  padding-left: var(--size-4-3);
+}
+
+.vault-search-settings-stats li {
+  font-size: var(--font-ui-small);
+  color: var(--text-normal);
+  line-height: 1.8;
+}
+
+.vault-search-progress-bar {
+  width: 100%;
+  height: 4px;
+  background-color: var(--background-modifier-border);
+  border-radius: 2px;
+  margin-top: var(--size-2-2);
+  overflow: hidden;
+}
+
+.vault-search-progress-fill {
+  height: 100%;
+  background-color: var(--interactive-accent);
+  border-radius: 2px;
+  transition: width 200ms ease;
+}
