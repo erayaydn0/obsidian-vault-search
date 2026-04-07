@@ -139,14 +139,10 @@ export default class VaultSearchPlugin extends Plugin {
     const loaded = (await this.loadData()) as Partial<VaultSearchSettings> | null;
     /* Migrate paths from older releases that assumed the default Obsidian config folder name. */
     /* eslint-disable obsidianmd/hardcoded-config-path -- legacy string stored in data.json */
-    const legacyConfigDirPrefix = '.obsidian/';
+     
     /* eslint-enable obsidianmd/hardcoded-config-path */
-    const loadedModelCacheDir = loaded?.modelCacheDir?.startsWith(legacyConfigDirPrefix)
-      ? loaded.modelCacheDir.replace(legacyConfigDirPrefix, `${configDir}/`)
-      : loaded?.modelCacheDir;
-    const loadedExcludedPaths = loaded?.excludedPaths?.map((path) =>
-      path.startsWith(legacyConfigDirPrefix) ? path.replace(legacyConfigDirPrefix, `${configDir}/`) : path,
-    );
+    const loadedModelCacheDir = loaded?.modelCacheDir;
+    const loadedExcludedPaths = loaded?.excludedPaths;
     this.settings = {
       ...cloneSettings(DEFAULT_SETTINGS),
       ...loaded,
