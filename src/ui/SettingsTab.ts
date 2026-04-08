@@ -103,7 +103,7 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Search mode')
-      .setDesc('Hybrid search uses BM25 with semantic and title signals; semantic-only uses vector similarity only.')
+      .setDesc('Hybrid mode uses keyword ranking with semantic and title signals; semantic-only mode uses vector similarity only.')
       .addDropdown((dropdown) =>
         dropdown
           .addOption('hybrid', 'Hybrid')
@@ -116,7 +116,7 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
       );
 
     containerEl.createEl('p', {
-      text: 'The weights for BM25, vector, and title must total 1.0.',
+      text: 'The weights for keyword, vector, and title signals must total 1.0.',
       cls: 'setting-item-description',
     });
 
@@ -158,7 +158,7 @@ export class VaultSearchSettingsTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Show scores')
-      .setDesc('Include BM25, vector, and RRF scores next to each result.')
+      .setDesc('Show keyword, vector, and reciprocal rank fusion scores next to each result.')
       .addToggle((toggle) =>
         toggle.setValue(this.plugin.settings.showScores).onChange(async (value) => {
           this.plugin.settings.showScores = value;
